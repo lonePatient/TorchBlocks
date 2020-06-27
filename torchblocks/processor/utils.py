@@ -14,7 +14,7 @@ class InputExample:
                  label_ids=None,
                  **kwargs):
         self.guid = guid
-        self.texts = texts
+        self.texts = texts  # [text_a,text_b]
         self.label = label  # 只有一个标签
         self.label_ids = label_ids  # 多个标签，比如多标签，NER等任务
 
@@ -39,7 +39,6 @@ class InputFeatures:
     A single set of features of processor.
     Property names are the same names as the corresponding inputs to a model.
     """
-
     def __init__(self,
                  input_ids=None,
                  attention_mask=None,

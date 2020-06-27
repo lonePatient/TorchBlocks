@@ -1,10 +1,9 @@
 import os
 import csv
-import torch
-from torchblocks.losses import KL
 from torchblocks.metrics import MattewsCorrcoef
 from torchblocks.trainer import TextClassifierTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
+from torchblocks.callback.adversarial import ALUM
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
@@ -14,21 +13,12 @@ from transformers import WEIGHTS_NAME
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
-
-kl = KL()
-
-def adv_project(grad, norm_type='inf', eps=1e-6):
-    if norm_type == 'l2':
-        direction = grad / (torch.norm(grad, dim=-1, keepdim=True) + eps)
-    elif norm_type == 'l1':
-        direction = grad.sign()
-    else:
-        direction = grad / (grad.abs().max(-1, keepdim=True)[0] + eps)
-    return direction
-
+'''
+Adversarial Training for Large Neural Language Models
+'''
 class ColaProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir, prefix):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir,  prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -63,43 +53,17 @@ class AlumTrainer(TextClassifierTrainer):
                          batch_input_keys=batch_input_keys,
                          collate_fn=collate_fn)
 
+        self.adv_model = ALUM(adv_lr=args.adv_lr,
+                              adv_K=args.adv_K,
+                              adv_var=args.adv_var,
+                              adv_alpha=args.adv_alpha,
+                              adv_gamma=args.adv_gamma,
+                              adv_norm_type=args.adv_norm_type)
+
     def _train_step(self, model, batch, optimizer):
         model.train()
         inputs = self.build_inputs(batch)
-        outputs = model(**inputs)
-        loss, logits = outputs[:2]
-        if isinstance(model, torch.nn.DataParallel):
-            embeds_init = model.module.bert.embeddings.word_embeddings(inputs['input_ids'])
-        else:
-            embeds_init = model.bert.embeddings.word_embeddings(inputs["input_ids"])
-        input_mask = inputs['attention_mask'].to(embeds_init)
-        delta = torch.zeros_like(embeds_init).normal_(0, 1) * self.args.adv_var * input_mask.unsqueeze(2)
-        for astep in range(self.args.adv_K):
-            delta.requires_grad_()
-            inputs['inputs_embeds'] = delta + embeds_init
-            inputs['input_ids'] = None
-            adv_outputs = model(**inputs)
-            adv_logits = adv_outputs[1]  # model outputs are always tuple in transformers (see doc)
-
-            adv_loss = kl(adv_logits, logits.detach())
-            delta_grad, = torch.autograd.grad(adv_loss, delta, only_inputs=True)
-            adv_direct = adv_project(delta_grad, norm_type=self.args.adv_norm_type, eps=self.args.adv_gamma)
-
-            inputs['inputs_embeds'] = embeds_init + adv_direct * self.args.adv_lr
-            outputs = model(**inputs)
-            adv_loss_f = kl(outputs[1], logits.detach())
-            adv_loss_b = kl(logits, outputs[1].detach())
-            adv_loss = (adv_loss_f + adv_loss_b) * self.args.adv_alpha
-            loss = loss + adv_loss
-            if self.args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            if self.args.gradient_accumulation_steps > 1:
-                loss = loss / self.args.gradient_accumulation_steps
-            loss.backward()
-            if isinstance(model, torch.nn.DataParallel):
-                embeds_init = model.module.bert.embeddings.word_embeddings(batch[0])
-            else:
-                embeds_init = model.bert.embeddings.word_embeddings(batch[0])
+        loss = self.adv_model.attack(model, inputs, gradient_accumulation_steps=self.args.gradient_accumulation_steps)
         return loss.item()
 
 
@@ -130,7 +94,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = ColaProcessor(tokenizer, args.data_dir,prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels

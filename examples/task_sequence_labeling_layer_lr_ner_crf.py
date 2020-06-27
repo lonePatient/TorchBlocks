@@ -2,25 +2,23 @@ import os
 
 from torchblocks.metrics import NERScore
 from torchblocks.trainer import SequenceLabelingTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
 from torchblocks.processor import SequenceLabelingProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
-from torchblocks.processor import CNTokenizer
-from torchblocks.models.nn import BertCrfForNer
+from torchblocks.data import CNTokenizer
+from torchblocks.models.nn import BertCRFForNer
 from torchblocks.optim import AdamW
 from torchblocks.optim.lr_scheduler import get_linear_schedule_with_warmup
-
 from transformers import WEIGHTS_NAME, BertConfig
 
 MODEL_CLASSES = {
-    'bert': (BertConfig, BertCrfForNer, CNTokenizer)
+    'bert': (BertConfig, BertCRFForNer, CNTokenizer)
 }
 
-
 class CnerProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix=''):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir,prefix=''):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir,prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -77,17 +75,14 @@ class CnerProcessor(SequenceLabelingProcessor):
 
 class LayerLRTrainer(SequenceLabelingTrainer):
     def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None, ):
-        super().__init__(args=args,
-                         metrics=metrics,
-                         logger=logger,
+        super().__init__(args=args,metrics=metrics,logger=logger,
                          batch_input_keys=batch_input_keys,
                          collate_fn=collate_fn)
 
-    def build_optimizers(self, model, t_total):
+    def build_optimizers(self, model):
         '''
         Setup the optimizer and the learning rate scheduler.
         '''
-        warmup_steps = int(t_total * self.args.warmup_proportion)
         no_decay = ["bias", "LayerNorm.weight"]
         bert_param_optimizer = list(model.bert.named_parameters())
         crf_param_optimizer = list(model.crf.named_parameters())
@@ -110,10 +105,7 @@ class LayerLRTrainer(SequenceLabelingTrainer):
              'lr': self.args.crf_learning_rate}
         ]
         optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon)
-        scheduler = get_linear_schedule_with_warmup(optimizer,
-                                                    num_warmup_steps=warmup_steps,
-                                                    num_training_steps=t_total)
-        return optimizer, scheduler
+        return optimizer
 
 
 def main():
@@ -139,7 +131,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = CnerProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = CnerProcessor(tokenizer, args.data_dir,prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}
@@ -155,8 +147,7 @@ def main():
 
 
     logger.info("initializing traniner")
-    trainer = LayerLRTrainer(logger=logger,
-                             args=args,
+    trainer = LayerLRTrainer(logger=logger,args=args,
                              batch_input_keys=processor.get_batch_keys(),
                              collate_fn=processor.collate_fn,
                              metrics=[NERScore(id2label, markup=args.markup)])

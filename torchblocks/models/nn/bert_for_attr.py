@@ -6,9 +6,9 @@ from ..layers.attentions import CosAttention
 from torch.nn import LayerNorm
 
 
-class BertCrfForAttr(BertPreTrainedModel):
+class BertCRFForAttr(BertPreTrainedModel):
     def __init__(self, config):
-        super(BertCrfForAttr, self).__init__(config)
+        super(BertCRFForAttr, self).__init__(config)
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.t_lstm = nn.LSTM(input_size=config.hidden_size,
@@ -25,11 +25,15 @@ class BertCrfForAttr(BertPreTrainedModel):
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
         self.init_weights()
 
-    def forward(self, input_ids, a_input_ids, token_type_ids=None, attention_mask=None,
-                a_token_type_ids=None, a_attention_mask=None, labels=None):
+    def forward(self, a_input_ids, b_input_ids,
+                a_token_type_ids=None,
+                b_token_type_ids=None,
+                a_attention_mask=None,
+                b_attention_mask=None,
+                labels=None):
         # bert
-        outputs_title = self.bert(input_ids, token_type_ids, attention_mask)
-        outputs_attr = self.bert(a_input_ids, a_token_type_ids, a_attention_mask)
+        outputs_title = self.bert(a_input_ids, a_token_type_ids, a_attention_mask)
+        outputs_attr = self.bert(b_input_ids, b_token_type_ids, b_attention_mask)
         # bilstm
         title_output, _ = self.t_lstm(outputs_title[0])
         _, attr_hidden = self.a_lstm(outputs_attr[0])
@@ -43,6 +47,6 @@ class BertCrfForAttr(BertPreTrainedModel):
         logits = self.classifier(sequence_output)
         outputs = (logits,)
         if labels is not None:
-            loss = self.crf(emissions=logits, tags=labels, mask=attention_mask)
+            loss = self.crf(emissions=logits, tags=labels, mask=a_attention_mask)
             outputs = (-1 * loss,) + outputs
         return outputs  # (loss), scores

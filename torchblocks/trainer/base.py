@@ -85,10 +85,10 @@ class TrainerBase:
         build record object
         '''
         self.records = {}
-        self.records['result'] = {}
-        self.records['preds'] = []
-        self.records['target'] = []
-        self.records['input_lens'] = []
+        self.records['result'] = {}  # training result dict
+        self.records['preds'] = []  # pred list
+        self.records['target'] = []  # true target list
+        self.records['input_lens'] = []  # input length list
         self.records['loss_meter'] = AverageMeter()
         for key, value in kwargs.items():
             if key not in self.records:
@@ -97,11 +97,10 @@ class TrainerBase:
         for metric in self.metrics:
             metric.reset()
 
-    def build_optimizers(self, model, t_total):
+    def build_optimizers(self, model):
         '''
         Setup the optimizer and the learning rate scheduler.
         '''
-        warmup_steps = int(t_total * self.args.warmup_proportion)
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {"params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
@@ -109,13 +108,18 @@ class TrainerBase:
             {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
              "weight_decay": 0.0},
         ]
-        optimizer = AdamW(optimizer_grouped_parameters,
-                          lr=self.args.learning_rate,
-                          eps=self.args.adam_epsilon)
+        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon)
+        return optimizer
+
+    def build_scheduler(self, optimizer, t_total):
+        '''
+        Setup the optimizer and the learning rate scheduler.
+        '''
+        warmup_steps = int(t_total * self.args.warmup_proportion)
         scheduler = get_linear_schedule_with_warmup(optimizer=optimizer,
                                                     num_warmup_steps=warmup_steps,
                                                     num_training_steps=t_total)
-        return optimizer, scheduler
+        return scheduler
 
     def build_train_dataloader(self, train_dataset):
         '''
@@ -197,8 +201,9 @@ class TrainerBase:
         Main training entry point.
         """
         train_dataloader = self.build_train_dataloader(train_dataset)
-        t_total = int(len(train_dataloader) // self.args.gradient_accumulation_steps * self.args.num_train_epochs)
-        optimizer, scheduler = self.build_optimizers(model, t_total)
+        t_total = len(train_dataloader) // self.args.gradient_accumulation_steps * self.args.num_train_epochs
+        optimizer = self.build_optimizers(model)
+        scheduler = self.build_scheduler(optimizer, t_total)
         optimizer, scheduler = self.restore_optimizer(optimizer, scheduler)
         model, optimizer = self.prepare_for_training(model, optimizer)
         # Train!
@@ -211,8 +216,10 @@ class TrainerBase:
         for epoch in range(0, int(self.args.num_train_epochs)):
             self.build_record_object()
             pbar = ProgressBar(n_total=len(train_dataloader), desc='Training')
+            a = 0
             for step, batch in enumerate(train_dataloader):
                 loss = self._train_step(model, batch, optimizer)
+                a = a+loss
                 if (step + 1) % self.args.gradient_accumulation_steps == 0:
                     self._train_update(model, optimizer, loss, scheduler)
                     if self.args.do_ema:
@@ -223,6 +230,7 @@ class TrainerBase:
                         and self.global_step % self.args.logging_steps == 0
                 ):
                     print(" ")
+                    print(a)
                     if self.args.do_ema:
                         ema.apply_shadow(model)
                     self.evaluate(model, eval_dataset)
@@ -381,8 +389,7 @@ class TrainerBase:
                     self.logger.info(f"{metric.name()} value is None")
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
-            self.save_predict_result(file_name=output_logits_file,
-                                     data=self.records['preds'])
+            self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.print_evaluate_result()
         if 'cuda' in str(self.args.device):
@@ -393,8 +400,7 @@ class TrainerBase:
         self._predict_forward(model, test_dataloader, do_eval=False)
         self.logger.info("   ")
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
-        self.save_predict_result(file_name=output_logits_file,
-                                 data=self.records['preds'])
+        self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
 
     def _predict_forward(self, model, data_loader, do_eval, **kwargs):
         raise NotImplementedError

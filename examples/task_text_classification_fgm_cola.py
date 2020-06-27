@@ -2,7 +2,7 @@ import os
 import csv
 from torchblocks.metrics import MattewsCorrcoef
 from torchblocks.trainer import TextClassifierTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
 from torchblocks.callback.adversarial import FGM
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
@@ -10,19 +10,12 @@ from torchblocks.utils import prepare_device, get_checkpoints
 from transformers import BertForSequenceClassification, BertConfig, BertTokenizer
 from transformers import WEIGHTS_NAME
 
-try:
-    from apex import amp
-
-    _has_apex = True
-except ImportError:
-    _has_apex = False
-
 MODEL_CLASSES = {'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)}
 
 
 class ColaProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir, prefix):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -50,8 +43,7 @@ class ColaProcessor(TextClassifierProcessor):
 
 
 class FGMTrainer(TextClassifierTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None, ):
-
+    def __init__(self, args, metrics, logger,batch_input_keys,collate_fn=None):
         super().__init__(args=args,
                          metrics=metrics,
                          logger=logger,
@@ -68,11 +60,7 @@ class FGMTrainer(TextClassifierTrainer):
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
-        if self.args.fp16:
-            with amp.scale_loss(loss, optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
+        loss.backward()
         fgm_model.attack()
         loss_adv = model(**inputs)[0]
         if self.args.n_gpu > 1:
@@ -105,7 +93,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = ColaProcessor(tokenizer, args.data_dir,prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels
@@ -116,6 +104,7 @@ def main():
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
 
     logger.info("initializing traniner")
     trainer = FGMTrainer(logger=logger,

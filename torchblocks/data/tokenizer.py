@@ -1,10 +1,11 @@
 """自定义分别tokenzier"""
 from transformers import BertTokenizer
 
+
 class CNTokenizer(BertTokenizer):
     def __init__(self,
                  vocab_file,
-                 delimiter='',
+                 delimiter='',  # 分隔符
                  unk_token='[UNK]',
                  do_lower_case=False,
                  **kwargs):
@@ -17,9 +18,9 @@ class CNTokenizer(BertTokenizer):
         self.delimiter = delimiter
         self.unk_token = unk_token
 
-    def tokenize(self, text,**kwargs):
-        if not isinstance(text, str): # 必须str，否则不经过自定义tokenize，
-            raise ValueError("'text' value type: expected to be str")
+    def tokenize(self, text, **kwargs):
+        if not isinstance(text, str):  # 必须str，否则不经过自定义tokenize，
+            raise ValueError(f"'text' value type: expected to be str,but get {type(text)}")
         if self.do_lower_case:
             text = text.lower()
         if self.delimiter == '':

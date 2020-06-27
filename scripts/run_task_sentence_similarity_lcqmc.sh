@@ -10,14 +10,14 @@ python task_sentence_similarity_lcqmc.py \
   --model_path=$MODEL_DIR \
   --task_name=$TASK_NAME \
   --do_train \
-  --gpu=0 \
+  --gpu=0,1 \
   --do_lower_case \
   --monitor=eval_acc \
   --data_dir=$DATA_DIR/${TASK_NAME}/ \
   --train_max_seq_length=128 \
   --eval_max_seq_length=128 \
-  --per_gpu_train_batch_size=16 \
-  --per_gpu_eval_batch_size=16 \
+  --per_gpu_train_batch_size=32 \
+  --per_gpu_eval_batch_size=32 \
   --learning_rate=2e-5 \
   --num_train_epochs=3.0 \
   --logging_steps=3731 \

@@ -2,11 +2,11 @@ import os
 
 from torchblocks.metrics import NERScore
 from torchblocks.trainer import SequenceLabelingSpanTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
 from torchblocks.processor import SequenceLabelingSpanProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
-from torchblocks.processor import CNTokenizer
+from torchblocks.data import CNTokenizer
 from torchblocks.models.nn import BertSpanForNer
 from transformers import WEIGHTS_NAME, BertConfig
 from torchblocks.metrics.ner_utils import get_spans
@@ -17,8 +17,8 @@ MODEL_CLASSES = {
 
 
 class CnerProcessor(SequenceLabelingSpanProcessor):
-    def __init__(self, markup, tokenizer, data_dir, logger, prefix=''):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, markup, tokenizer, data_dir, prefix=''):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir,  prefix=prefix)
         self.markup = markup
 
     def get_labels(self):
@@ -91,7 +91,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = CnerProcessor(args.markup, tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = CnerProcessor(args.markup, tokenizer, args.data_dir,prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}
@@ -107,8 +107,7 @@ def main():
 
 
     logger.info("initializing traniner")
-    trainer = SequenceLabelingSpanTrainer(logger=logger,
-                                          args=args,
+    trainer = SequenceLabelingSpanTrainer(logger=logger,args=args,
                                           batch_input_keys=processor.get_batch_keys(),
                                           collate_fn=processor.collate_fn,
                                           metrics=[NERScore(id2label, markup=args.markup, is_spans=True)])

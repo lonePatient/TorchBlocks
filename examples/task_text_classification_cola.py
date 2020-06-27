@@ -15,8 +15,8 @@ MODEL_CLASSES = {
 
 
 class ColaProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir, prefix):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -62,7 +62,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = ColaProcessor(tokenizer, args.data_dir,prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels

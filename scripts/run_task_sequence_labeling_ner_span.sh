@@ -25,3 +25,26 @@ python task_sequence_labeling_ner_span.py \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
   --overwrite_output_dir \
   --seed=42
+#
+#python task_sequence_labeling_ner_span.py \
+#  --model_type=bert \
+#  --model_path=$BERT_BASE_DIR \
+#  --model_name=bert-base-span \
+#  --task_name=${TASK_NAME} \
+#  --do_eval \
+#  --do_lower_case \
+#  --eval_all_checkpoints \
+#  --gpu=0 \
+#  --monitor=eval_f1 \
+#  --data_dir=$DATA_DIR/${TASK_NAME}/ \
+#  --train_max_seq_length=128 \
+#  --eval_max_seq_length=512 \
+#  --per_gpu_train_batch_size=24 \
+#  --per_gpu_eval_batch_size=24 \
+#  --learning_rate=2e-5 \
+#  --num_train_epochs=4.0 \
+#  --logging_steps=160 \
+#  --save_steps=160 \
+#  --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
+#  --overwrite_output_dir \
+#  --seed=42

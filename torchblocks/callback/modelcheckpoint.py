@@ -8,11 +8,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SAVE_MODEL_NAME = 'checkpoint'
+DEFAULT_SAVE_MODEL_NAME = 'checkpoint-'
 
 
 class ModelCheckpoint(object):
-    def __init__(self,checkpoint_dir,monitor,
+    def __init__(self, checkpoint_dir, monitor,
                  mode='min',
                  save_best_only=False):
 
@@ -29,16 +29,16 @@ class ModelCheckpoint(object):
             self.monitor_op = np.greater
             self.best = -np.Inf
         if save_best_only:
-            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-best")
+            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}best")
             os.makedirs(self.output_dir, exist_ok=True)
         else:
-            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-%s")
+            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}%s")
 
     def save_checkpoint(self, state, save_dir):
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
 
-        assert 'model' in state
+        assert 'model' in state, "state['model'] not exist"
         logger.info("Saving model checkpoint to %s", save_dir)
         model = state['model']
         if hasattr(model, 'save'):
@@ -63,7 +63,6 @@ class ModelCheckpoint(object):
         torch.save(state, os.path.join(save_dir, "state.bin"))
 
     def step(self, state, current):
-
         if self.save_best_only:
             if self.monitor_op(current, self.best):
                 logger.info(
@@ -75,5 +74,5 @@ class ModelCheckpoint(object):
             output_dir = self.output_dir % state['step']
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
-                logger.info(f" Step {state['step']} - {self.monitor}: {current:.5f} save model to disk.")
-                self.save_checkpoint(state, output_dir)
+            logger.info(f" Step {state['step']} - {self.monitor}: {current:.5f} save model to disk.")
+            self.save_checkpoint(state, output_dir)

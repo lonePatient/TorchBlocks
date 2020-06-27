@@ -9,6 +9,7 @@ python task_sequence_labeling_ner_crf.py \
   --model_path=$BERT_BASE_DIR \
   --task_name=${TASK_NAME} \
   --do_train \
+  --gpu=0 \
   --use_crf \
   --do_lower_case \
   --monitor=eval_f1 \
@@ -24,3 +25,4 @@ python task_sequence_labeling_ner_crf.py \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
   --overwrite_output_dir \
   --seed=42
+

@@ -48,8 +48,6 @@ class TrainModel(nn.Module):
         output_model_file = os.path.join(save_directory, WEIGHTS_NAME)
         if hasattr(model_to_save.config, 'save'):
             model_to_save.config.save(save_directory)
-        elif hasattr(model_to_save.config, 'save_pretrained'):
-            model_to_save.config.save_pretrained(save_directory)
         else:
             raise ValueError("Make sure that:\n 'config' is a correct config file")
         torch.save(model_to_save.state_dict(), output_model_file)
@@ -69,17 +67,16 @@ class TrainModel(nn.Module):
         else:
             model_kwargs = kwargs
         # Load model
-        if model_path is not None:
-            if os.path.isdir(model_path):
-                if os.path.isfile(os.path.join(model_path, WEIGHTS_NAME)):
-                    # Load from a PyTorch checkpoint
-                    archive_file = os.path.join(model_path, WEIGHTS_NAME)
-                else:
-                    raise EnvironmentError(
-                        "Error no file named {} found in directory {} ".format(
-                            [WEIGHTS_NAME, ], model_path))
-            elif os.path.isfile(model_path):
-                archive_file = model_path
+        if os.path.isdir(model_path):
+            if os.path.isfile(os.path.join(model_path, WEIGHTS_NAME)):
+                # Load from a PyTorch checkpoint
+                archive_file = os.path.join(model_path, WEIGHTS_NAME)
+            else:
+                raise EnvironmentError(
+                    "Error no file named {} found in directory {} ".format(
+                        [WEIGHTS_NAME, ], model_path))
+        elif os.path.isfile(model_path):
+            archive_file = model_path
         # Instantiate model.
         model = cls(config, *model_args, **model_kwargs)
         if state_dict is None:

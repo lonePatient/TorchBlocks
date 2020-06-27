@@ -8,9 +8,10 @@ class BertForSiameseModel(BertPreTrainedModel):
 
     def __init__(self, config):
         super(BertForSiameseModel, self).__init__(config)
+        self.num_labels = config.num_labels
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.seq_relationship = nn.Linear(config.hidden_size, 2)
+        self.seq_relationship = nn.Linear(config.hidden_size * 3, config.num_labels)
         self.init_weights()
 
     def forward(self, a_input_ids, b_input_ids,
@@ -36,6 +37,6 @@ class BertForSiameseModel(BertPreTrainedModel):
         outputs = (logits,)
         if labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, 2), labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             outputs = (loss,) + outputs
-            return outputs
+        return outputs

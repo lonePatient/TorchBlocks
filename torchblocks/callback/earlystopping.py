@@ -11,7 +11,7 @@ class EarlyStopping(object):
 
     def __init__(self,
                  min_delta=0,
-                 patience=10, #Interval (number of epochs) between checkpoints
+                 patience=10,  # Interval (number of epochs) between checkpoints
                  verbose=1,
                  mode='min',
                  monitor='eval_loss',

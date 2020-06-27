@@ -4,7 +4,7 @@ import torch
 import copy
 from torchblocks.metrics import MattewsCorrcoef
 from torchblocks.trainer import TextClassifierTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
@@ -12,21 +12,15 @@ from transformers import BertForSequenceClassification, BertConfig, BertTokenize
 from transformers import WEIGHTS_NAME
 from torch.nn import MSELoss
 
-try:
-    from apex import amp
-
-    _has_apex = True
-except ImportError:
-    _has_apex = False
-
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
-
-
+'''
+Improving BERT Fine-Tuning via Self-Ensemble and Self-Distillation
+'''
 class ColaProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir,prefix):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -78,18 +72,12 @@ class SDATrainer(TextClassifierTrainer):
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
         if self.args.gradient_accumulation_steps > 1:
             loss = loss / self.args.gradient_accumulation_steps
-        if self.args.fp16:
-            with amp.scale_loss(loss, optimizer) as scaled_loss:
-                scaled_loss.backward()
-        else:
-            loss.backward()
+        loss.backward()
         return loss.item()
 
     def _train_update(self, model, optimizer, loss, scheduler):
-        if self.args.fp16:
-            torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), self.args.max_grad_norm)
-        else:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
         optimizer.step()
         if self.scheduler_on_batch:
             scheduler.step()  # Update learning rate schedule
@@ -99,14 +87,12 @@ class SDATrainer(TextClassifierTrainer):
         self.logger.add_value(value=loss, step=self.global_step, name='loss')
         self.logger.add_value(value=scheduler.get_lr()[0], step=self.global_step, name="learning_rate")
         # update kd_model parameters
-        decay = min(self.args.kd_decay, (1 + self.global_step) / (10 + self.global_step))
-        one_minus_decay = 1.0 - decay
+        one_minus_decay = 1.0 - self.args.kd_decay
         self.kd_model.eval()
         with torch.no_grad():
             parameters = [p for p in model.parameters() if p.requires_grad]
             for s_param, param in zip(self.kd_model.parameters(), parameters):
                 s_param.sub_(one_minus_decay * (s_param - param))
-
 
 def main():
     parser = build_argparse()
@@ -131,7 +117,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = ColaProcessor(tokenizer, args.data_dir, prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels

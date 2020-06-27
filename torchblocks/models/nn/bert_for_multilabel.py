@@ -33,6 +33,6 @@ class BertForMultiLable(BertPreTrainedModel):
         outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
         if labels is not None:
             loss_fct = BCEWithLogitsLoss()
-            loss = loss_fct(logits.float(), labels.float())
+            loss = loss_fct(logits.view(-1, self.num_labels).float(), labels.view(-1, self.num_labels).float())
             outputs = (loss,) + outputs
         return outputs

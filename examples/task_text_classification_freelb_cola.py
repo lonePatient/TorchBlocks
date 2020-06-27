@@ -1,9 +1,9 @@
 import os
 import csv
-import torch
 from torchblocks.metrics import MattewsCorrcoef
 from torchblocks.trainer import TextClassifierTrainer
-from torchblocks.callback import ModelCheckpoint, TrainLogger
+from torchblocks.callback import TrainLogger
+from torchblocks.callback.adversarial import FreeLB
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
@@ -13,11 +13,12 @@ from transformers import WEIGHTS_NAME
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
-
-
+'''
+https://arxiv.org/pdf/1909.11764.pdf
+'''
 class ColaProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, logger=logger, prefix=prefix)
+    def __init__(self, tokenizer, data_dir, prefix):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -40,72 +41,28 @@ class ColaProcessor(TextClassifierProcessor):
             text_a = line[3] if set_type != 'test' else line[1]
             label = line[1] if set_type != 'test' else None
             examples.append(
-                InputExample(guid=guid, texts=[text_a,None], label=label))
+                InputExample(guid=guid, texts=[text_a, None], label=label))
         return examples
 
 
 class FreelbTrainer(TextClassifierTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys,collate_fn=None):
+    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
         super().__init__(args=args,
                          metrics=metrics,
                          logger=logger,
                          batch_input_keys=batch_input_keys,
                          collate_fn=collate_fn)
 
+        self.adv_model = FreeLB(adv_K=args.adv_K,
+                                adv_lr=args.adv_lr,
+                                adv_init_mag=args.adv_init_mag,
+                                adv_norm_type=args.adv_norm_type,
+                                adv_max_norm=args.adv_max_norm)
+
     def _train_step(self, model, batch, optimizer):
         model.train()
         inputs = self.build_inputs(batch)
-        input_ids = inputs['input_ids']
-        if isinstance(model, torch.nn.DataParallel):
-            embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
-        else:
-            embeds_init = model.bert.embeddings.word_embeddings(input_ids)
-        if self.args.adv_init_mag > 0:
-            input_mask = inputs['attention_mask'].to(embeds_init)
-            input_lengths = torch.sum(input_mask, 1)
-            if self.args.adv_norm_type == "l2":
-                delta = torch.zeros_like(embeds_init).uniform_(-1, 1) * input_mask.unsqueeze(2)
-                dims = input_lengths * embeds_init.size(-1)
-                mag = self.args.adv_init_mag / torch.sqrt(dims)
-                delta = (delta * mag.view(-1, 1, 1)).detach()
-            elif self.args.adv_norm_type == "linf":
-                delta = torch.zeros_like(embeds_init).uniform_(-self.args.adv_init_mag,
-                                                               self.args.adv_init_mag) * input_mask.unsqueeze(2)
-        else:
-            delta = torch.zeros_like(embeds_init)
-        for astep in range(self.args.adv_K):
-            delta.requires_grad_()
-            inputs['inputs_embeds'] = delta + embeds_init
-            inputs['input_ids'] = None
-            outputs = model(**inputs)
-            loss, logits = outputs[:2]  # model outputs are always tuple in transformers (see doc)
-            if self.args.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            if self.args.gradient_accumulation_steps > 1:
-                loss = loss / self.args.gradient_accumulation_steps
-            loss.backward()
-            delta_grad = delta.grad.clone().detach()
-            if self.args.adv_norm_type == "l2":
-                denorm = torch.norm(delta_grad.view(delta_grad.size(0), -1), dim=1).view(-1, 1, 1)
-                denorm = torch.clamp(denorm, min=1e-8)
-                delta = (delta + self.args.adv_lr * delta_grad / denorm).detach()
-                if self.args.adv_max_norm > 0:
-                    delta_norm = torch.norm(delta.view(delta.size(0), -1).float(), p=2, dim=1).detach()
-                    exceed_mask = (delta_norm > self.args.adv_max_norm).to(embeds_init)
-                    reweights = (self.args.adv_max_norm / delta_norm * exceed_mask + (1 - exceed_mask)).view(-1, 1, 1)
-                    delta = (delta * reweights).detach()
-            elif self.args.adv_norm_type == "linf":
-                denorm = torch.norm(delta_grad.view(delta_grad.size(0), -1), dim=1, p=float("inf")).view(-1, 1, 1)
-                denorm = torch.clamp(denorm, min=1e-8)
-                delta = (delta + self.args.adv_lr * delta_grad / denorm).detach()
-                if self.args.adv_max_norm > 0:
-                    delta = torch.clamp(delta, -self.args.adv_max_norm, self.args.adv_max_norm).detach()
-            else:
-                raise ValueError("Norm type {} not specified.".format(self.args.adv_norm_type))
-            if isinstance(model, torch.nn.DataParallel):
-                embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
-            else:
-                embeds_init = model.bert.embeddings.word_embeddings(input_ids)
+        loss = self.adv_model.attack(model, inputs, gradient_accumulation_steps=self.args.gradient_accumulation_steps)
         return loss.item()
 
 
@@ -137,7 +94,7 @@ def main():
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(tokenizer, args.data_dir, logger, prefix=prefix)
+    processor = ColaProcessor(tokenizer, args.data_dir, prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels

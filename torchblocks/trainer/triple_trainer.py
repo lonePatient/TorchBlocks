@@ -2,9 +2,11 @@ import torch
 from .base import TrainerBase
 from ..callback import ProgressBar
 from ..utils.tensor import tensor_to_cpu
+from ..losses.triplet_loss import DISTANCE2METRIC
+
 
 class TripleTrainer(TrainerBase):
-    def __init__(self, args, metrics, logger, batch_input_keys,collate_fn=None):
+    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
 
         super().__init__(args=args,
                          metrics=metrics,
@@ -30,10 +32,11 @@ class TripleTrainer(TrainerBase):
             else:
                 logits = outputs[0]
             anchor, positive, negative = logits
-            pos_dist = torch.sqrt((anchor - positive).pow(2).sum(dim=-1, keepdims=True))
-            neg_dist = torch.sqrt((anchor - negative).pow(2).sum(dim=-1, keepdims=True))
-            probs = pos_dist - neg_dist
-            self.records['preds'].append(tensor_to_cpu(probs))
+            distance_metric = DISTANCE2METRIC[self.args.distance_metric]
+            distance_positive = distance_metric(anchor, positive)
+            distance_negative = distance_metric(anchor, negative)
+            diff_dist = 1 - (distance_positive > distance_negative).int()
+            self.records['preds'].append(tensor_to_cpu(diff_dist))
             pbar(step)
         self.records['preds'] = torch.cat(self.records['preds'], dim=0)
         if do_eval:

@@ -1,79 +1,51 @@
 import os
-from torchblocks.metrics import NERScore
-from torchblocks.trainer import SequenceLabelingTrainer
+import json
+from torchblocks.metrics import Accuracy
+from torchblocks.trainer import TripleTrainer
 from torchblocks.callback import TrainLogger
-from torchblocks.processor import SequenceLabelingProcessor, InputExample
+from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
-from torchblocks.data import CNTokenizer
-from torchblocks.models.nn import BertCRFForNer
-from transformers import WEIGHTS_NAME, BertConfig
+from transformers import BertConfig, BertTokenizer
+from torchblocks.models import BertForTripletNet
+from transformers import WEIGHTS_NAME
 
+MODEL_CLASSES = {'bert': (BertConfig, BertForTripletNet, BertTokenizer)}
 
-MODEL_CLASSES = {
-    'bert': (BertConfig, BertCRFForNer, CNTokenizer)
-}
-
-class CnerProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir, prefix=''):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
+class EpidemicProcessor(TextClassifierProcessor):
+    def __init__(self, tokenizer, data_dir, prefix):
+        super().__init__(tokenizer=tokenizer,data_dir=data_dir,encode_mode='triple',prefix=prefix)
 
     def get_labels(self):
         """See base class."""
-        # 默认第一个为X
-        return ["X", 'B-CONT', 'B-EDU', 'B-LOC', 'B-NAME', 'B-ORG', 'B-PRO', 'B-RACE', 'B-TITLE',
-                'I-CONT', 'I-EDU', 'I-LOC', 'I-NAME', 'I-ORG', 'I-PRO', 'I-RACE', 'I-TITLE',
-                'O', 'S-NAME', 'S-ORG', 'S-RACE', "[START]", "[END]"]
+        return [0,1]
 
     def read_data(self, input_file):
         """Reads a json list file."""
         lines = []
-        with open(input_file, 'r') as f:
-            words = []
-            labels = []
-            for line in f:
-                if line.startswith("-DOCSTART-") or line == "" or line == "\n":
-                    if words:
-                        lines.append({"words": "".join(words), "labels": labels})
-                        words = []
-                        labels = []
-                else:
-                    splits = line.split(" ")
-                    words.append(splits[0])
-                    if len(splits) > 1:
-                        labels.append(splits[-1].replace("\n", ""))
-                    else:
-                        # Examples could have no label for mode = "test"
-                        labels.append("O")
-            if words:
-                lines.append({"words": "".join(words), "labels": labels})
-        return lines
+        with open(input_file, "r", encoding="utf-8") as f:
+            for i, line in enumerate(f):
+                line = json.loads(line)
+                lines.append(line)
+            return lines
 
     def create_examples(self, lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
-            if i == 0:
-                continue
             guid = "%s-%s" % (set_type, i)
-            text_a = line['words']
-            labels = []
-            for x in line['labels']:
-                if 'M-' in x:
-                    labels.append(x.replace('M-', 'I-'))
-                elif 'E-' in x:
-                    labels.append(x.replace('E-', 'I-'))
-                else:
-                    labels.append(x)
-            # 标签序列使用label_ids
-            examples.append(InputExample(guid=guid, texts=[text_a,None], label_ids=labels))
+            text_a = line['anchor']
+            text_b = line["positives"]
+            text_c = line["negatives"]
+            label = 1
+            examples.append(
+                InputExample(guid=guid, texts=[[text_a,None],[text_b,None],[text_c,None]], label=label))
         return examples
-
 
 def main():
     parser = build_argparse()
-    parser.add_argument('--markup', type=str, default='bios', choices=['bios', 'bio'])
-    parser.add_argument('--use_crf', action='store_true',default=True)
+    parser.add_argument('--distance_metric', type=str, default="educlidean",
+                        choices=["cosine", 'educlidean', "manhattan"])
     args = parser.parse_args()
 
     if args.model_name is None:
@@ -86,45 +58,37 @@ def main():
 
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
-
     seed_everything(args.seed)
+
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
 
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = CnerProcessor(tokenizer, args.data_dir, prefix=prefix)
-    label_list = processor.get_labels()
-    num_labels = len(label_list)
-    id2label = {i: label for i, label in enumerate(label_list)}
-    args.id2label = id2label
-    args.num_labels = num_labels
+    processor = EpidemicProcessor(tokenizer, args.data_dir, prefix=prefix)
 
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path,
-                                          num_labels=num_labels,
                                           cache_dir=args.cache_dir if args.cache_dir else None)
+    config.distance_metric = args.distance_metric
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
 
-
     logger.info("initializing traniner")
-    trainer = SequenceLabelingTrainer(logger=logger,
-                                      args=args,
-                                      batch_input_keys=processor.get_batch_keys(),
-                                      collate_fn=processor.collate_fn,
-                                      metrics=[NERScore(id2label, markup=args.markup)])
+    trainer = TripleTrainer(logger=logger,args=args,metrics=[Accuracy()],
+                            batch_input_keys=processor.get_batch_keys(),
+                            collate_fn=processor.collate_fn)
     if args.do_train:
         train_dataset = processor.create_dataset(max_seq_length=args.train_max_seq_length,
-                                                 data_name='train.char.bmes',mode='train')
+                                                 data_name='train.json', mode='train')
         eval_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='dev.char.bmes',mode='dev')
+                                                data_name='dev.json', mode='dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
 
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
         eval_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='dev.char.bmes', mode='dev')
+                                                data_name='dev.json', mode='dev')
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints or args.checkpoint_number > 0:
             checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -142,7 +106,7 @@ def main():
 
     if args.do_predict:
         test_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='test.char.bmes', mode='test')
+                                                data_name='test.json', mode='test')
         if args.checkpoint_number == 0:
             raise ValueError("checkpoint number should > 0,but get %d", args.checkpoint_number)
         checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -155,3 +119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

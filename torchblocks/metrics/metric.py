@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import f1_score, classification_report
 from sklearn.metrics import matthews_corrcoef
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,18 +18,15 @@ def simple_accuracy(preds, labels):
 
 
 class Accuracy(Metric):
-    '''
-    Accuracy
-    '''
 
     def __init__(self):
         super().__init__()
 
     def update(self, input, target):
-        assert isinstance(input, torch.Tensor)
-        assert isinstance(target, torch.Tensor)
-
-        self.preds = torch.argmax(input, dim=1).numpy()
+        if input.dim()==1:
+            self.preds = input.numpy()
+        else:
+            self.preds = torch.argmax(input, dim=1).numpy()
         self.labels = target.numpy()
 
     def value(self):
@@ -42,14 +40,10 @@ class MattewsCorrcoef(Metric):
     '''
     Matthews Correlation Coefficient
     '''
-
     def __init__(self):
         super().__init__()
 
     def update(self, input, target):
-        assert isinstance(input, torch.Tensor)
-        assert isinstance(target, torch.Tensor)
-
         self.preds = torch.argmax(input, dim=1).numpy()
         self.labels = target.numpy()
 
@@ -86,7 +80,6 @@ class AUC(Metric):
     '''
     Area Under Curve
     '''
-
     def __init__(self, task_type='binary', average='binary'):
         super(AUC, self).__init__()
 
@@ -101,7 +94,7 @@ class AUC(Metric):
             self.y_prob = tensor_to_numpy(input.sigmoid().data)
         else:
             self.y_prob = tensor_to_numpy(input.softmax(-1).data)
-        self.y_true = target.cpu().numpy()
+        self.y_true = tensor_to_numpy(target)
 
     def value(self):
         auc = roc_auc_score(y_score=self.y_prob, y_true=self.y_true, average=self.average)
@@ -176,7 +169,6 @@ class ClassificationReport(Metric):
     '''
     classification report
     '''
-
     def __init__(self, target_names=None):
         super(ClassificationReport).__init__()
         self.target_names = target_names
@@ -213,7 +205,7 @@ class MultiLabelReport(Metric):
                 auc = roc_auc_score(y_score=self.y_prob[:, i], y_true=self.y_true[:, i])
             except Exception as e:
                 auc = 0.000
-            logger.warning(f"Only one class present in label:{label} ")
+                logger.warning(f"Only one class present in label:{label} ")
             logger.info(f"  label:{label} - auc: {auc:.4f}")
 
     def name(self):

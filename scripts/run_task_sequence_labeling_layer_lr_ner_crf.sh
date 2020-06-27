@@ -10,6 +10,7 @@ python task_sequence_labeling_layer_lr_ner_crf.py \
   --model_name=bert-crf-layer-lr \
   --task_name=${TASK_NAME} \
   --do_train \
+  --gpu=0,1 \
   --use_crf \
   --do_lower_case \
   --monitor=eval_f1 \
@@ -21,8 +22,8 @@ python task_sequence_labeling_layer_lr_ner_crf.py \
   --learning_rate=3e-5 \
   --crf_learning_rate=1e-3 \
   --num_train_epochs=4.0 \
-  --logging_steps=160 \
-  --save_steps=160 \
+  --logging_steps=80 \
+  --save_steps=80 \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
   --overwrite_output_dir \
   --seed=42

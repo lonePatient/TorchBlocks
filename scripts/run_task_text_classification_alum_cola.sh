@@ -12,6 +12,7 @@ python task_text_classification_alum_cola.py \
   --task_name=${TASK_NAME} \
   --do_train \
   --do_lower_case \
+  --gpu=0,1 \
   --adv_lr=1e-3 \
   --monitor=eval_mcc \
   --data_dir=$DATA_DIR/${TASK_NAME}/ \
@@ -21,8 +22,8 @@ python task_text_classification_alum_cola.py \
   --per_gpu_eval_batch_size=32 \
   --learning_rate=2e-5 \
   --num_train_epochs=6.0 \
-  --logging_steps=268 \
-  --save_steps=268 \
+  --logging_steps=134 \
+  --save_steps=134 \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
   --overwrite_output_dir \
   --seed=42

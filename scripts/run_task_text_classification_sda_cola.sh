@@ -10,6 +10,7 @@ python task_text_classification_sda_cola.py \
   --model_name=bert-base-sda \
   --task_name=${TASK_NAME} \
   --do_train \
+  --gpu=0,1 \
   --do_lower_case \
   --monitor=eval_mcc \
   --kd_coeff=1.0 \
@@ -20,8 +21,8 @@ python task_text_classification_sda_cola.py \
   --per_gpu_eval_batch_size=32 \
   --learning_rate=2e-5 \
   --num_train_epochs=10.0 \
-  --logging_steps=268 \
-  --save_steps=268 \
+  --logging_steps=134 \
+  --save_steps=134 \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \
   --overwrite_output_dir \
   --seed=42

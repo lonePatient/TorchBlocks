@@ -36,7 +36,7 @@ class SequenceLabelingTrainer(TrainerBase):
         self.logger.info("   ")
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
-        self.records['result'].update({f"eval_{k}": f"{v:.5f}" for k, v in value.items()})
+        self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
 
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
@@ -93,11 +93,12 @@ class SequenceLabelingTrainer(TrainerBase):
             else:
                 logits = outputs[0]
             if self.args.use_crf:
-                tags = model.crf.decode(logits, inputs['attention_mask'])
+                crf_model = model.module.crf if isinstance(model, nn.DataParallel) else model.crf
+                tags = crf_model.decode(logits, inputs['attention_mask'])
                 self.records['preds'].extend(tensor_to_list(tags.squeeze(0)))
             else:
                 self.records['preds'].extend(tensor_to_list(torch.argmax(logits, dim=2)))
-            self.records['input_lens'].extend(tensor_to_list(torch.sum(inputs['attention_mask'], 1)).cpu())
+            self.records['input_lens'].extend(tensor_to_list(torch.sum(inputs['attention_mask'], 1)))
             pbar(step)
 
 
@@ -146,7 +147,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
         self.logger.info("   ")
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
-        self.records['result'].update({f"eval_{k}": f"{v:.5f}" for k, v in value.items()})
+        self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
 
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
@@ -190,7 +191,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                 outputs = model(**inputs)
             if do_eval:
                 loss, start_logits, end_logits = outputs[:3]
-                self.records['loss_meter'].update(loss.item(), n=1)
+                self.records['loss_meter'].update(loss.mean().item(), n=1)
                 start_positions = tensor_to_list(inputs['start_positions'])
                 end_positions = tensor_to_list(inputs['end_positions'])
                 self.records['target'].extend(zip(start_positions, end_positions))

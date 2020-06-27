@@ -1,6 +1,6 @@
 import os
 import csv
-from torchblocks.metrics import F1Score,Accuracy
+from torchblocks.metrics import F1Score, Accuracy
 from torchblocks.trainer import TextClassifierTrainer
 from torchblocks.callback import TrainLogger
 from torchblocks.processor import DataProcessor, InputExample, InputFeatures
@@ -13,11 +13,13 @@ from transformers import WEIGHTS_NAME
 MODEL_CLASSES = {
     'bert': (BertConfig, REBERT, BertTokenizer)
 }
+'''
+Enriching Pre-trained Language Model with Entity Information for Relation Classification
+'''
 
 class SemEvalProcessor(DataProcessor):
-    def __init__(self, tokenizer, data_dir, logger, prefix, label_path, add_sep_token=False):
-        super().__init__(data_dir=data_dir, logger=logger, prefix=prefix)
-        self.tokenizer = tokenizer
+    def __init__(self, tokenizer, data_dir, prefix, label_path, add_sep_token=False):
+        super().__init__(data_dir=data_dir, prefix=prefix, tokenizer=tokenizer)
         self.label_path = label_path
         self.add_sep_token = add_sep_token
 
@@ -52,7 +54,7 @@ class SemEvalProcessor(DataProcessor):
         features = []
         for (ex_index, example) in enumerate(examples):
             if ex_index % 10000 == 0:
-                self.logger.info("Writing example %d/%d" % (ex_index, len(examples)))
+                print("Writing example %d/%d" % (ex_index, len(examples)))
             texts = example.texts
             tokens_a = self.tokenizer.tokenize(texts[0])
             e11_p = tokens_a.index("<e1>")  # the start position of entity1
@@ -88,11 +90,9 @@ class SemEvalProcessor(DataProcessor):
             input_ids = input_ids + padding_tokens
             attention_mask = attention_mask + padding_tokens
             token_type_ids = token_type_ids + padding_tokens
-
             # e1 mask, e2 mask
             e1_mask = [0] * len(attention_mask)
             e2_mask = [0] * len(attention_mask)
-
             for i in range(e11_p, e12_p + 1):
                 e1_mask[i] = 1
             for i in range(e21_p, e22_p + 1):
@@ -102,15 +102,14 @@ class SemEvalProcessor(DataProcessor):
             inputs = {}
             inputs['input_ids'] = input_ids
             inputs['attention_mask'] = attention_mask
-            inputs['label'] = label
             inputs['token_type_ids'] = token_type_ids
             inputs['e2_mask'] = e2_mask
             inputs['e1_mask'] = e1_mask
+            inputs['label'] = label
             if ex_index < 5:
                 self.print_examples(**inputs)
             features.append(InputFeatures(**inputs))
         return features
-
 
 def main():
     parser = build_argparse()
@@ -136,8 +135,8 @@ def main():
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
     ADDITIONAL_SPECIAL_TOKENS = ["<e1>", "</e1>", "<e2>", "</e2>"]
     tokenizer.add_special_tokens({"additional_special_tokens": ADDITIONAL_SPECIAL_TOKENS})
-    processor = SemEvalProcessor(tokenizer, args.data_dir, logger,
-                                 prefix=prefix, label_path=os.path.join(args.data_dir, args.label_file))
+    processor = SemEvalProcessor(tokenizer, args.data_dir,prefix=prefix,
+                                 label_path=os.path.join(args.data_dir, args.label_file))
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels
@@ -152,7 +151,7 @@ def main():
     trainer = TextClassifierTrainer(logger=logger, args=args,
                                     batch_input_keys=processor.get_batch_keys(),
                                     collate_fn=processor.collate_fn,
-                                    metrics=[F1Score(average='macro',task_type='multiclass'),Accuracy()])
+                                    metrics=[F1Score(average='macro', task_type='multiclass'), Accuracy()])
     if args.do_train:
         train_dataset = processor.create_dataset(max_seq_length=args.train_max_seq_length,
                                                  data_name='train.tsv', mode='train')

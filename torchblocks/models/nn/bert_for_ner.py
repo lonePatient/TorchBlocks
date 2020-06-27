@@ -5,7 +5,7 @@ from torch.nn import CrossEntropyLoss
 from ..layers.crf import CRF
 from ..layers.linears import PoolerEndLogits, PoolerStartLogits
 from transformers import BertModel, BertPreTrainedModel
-
+from torchblocks.losses.span_loss import SpanLoss
 
 class BertSoftmaxForNer(BertPreTrainedModel):
     def __init__(self, config):
@@ -44,9 +44,9 @@ class BertSoftmaxForNer(BertPreTrainedModel):
         return outputs
 
 
-class BertCrfForNer(BertPreTrainedModel):
+class BertCRFForNer(BertPreTrainedModel):
     def __init__(self, config):
-        super(BertCrfForNer, self).__init__(config)
+        super(BertCRFForNer, self).__init__(config)
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
@@ -105,18 +105,8 @@ class BertSpanForNer(BertPreTrainedModel):
         outputs = (start_logits, end_logits,) + outputs[2:]
 
         if start_positions is not None and end_positions is not None:
-            loss_fct = CrossEntropyLoss()
-            start_logits = start_logits.view(-1, self.num_labels)
-            end_logits = end_logits.view(-1, self.num_labels)
-            active_loss = attention_mask.view(-1) == 1
-            active_start_logits = start_logits[active_loss]
-            active_end_logits = end_logits[active_loss]
-
-            active_start_labels = start_positions.view(-1)[active_loss]
-            active_end_labels = end_positions.view(-1)[active_loss]
-
-            start_loss = loss_fct(active_start_logits, active_start_labels)
-            end_loss = loss_fct(active_end_logits, active_end_labels)
-            total_loss = (start_loss + end_loss) / 2
-            outputs = (total_loss,) + outputs
+            loss_fct = SpanLoss()
+            loss = loss_fct(input=(start_logits,end_logits),target=(start_positions,end_positions),masks=attention_mask)
+            outputs = (loss,) + outputs
         return outputs
+
