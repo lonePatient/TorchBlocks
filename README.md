@@ -2,6 +2,14 @@
 
 A Pytorch ToolBox
 
+## Installation
+
+```shell
+git clone https://github.com/lonePatient/TorchBlocks.git
+cd TorchBlocks
+python setup.py install
+```
+
 ## Examples
 
 17. run_task_text_classification_ema_cola.sh
