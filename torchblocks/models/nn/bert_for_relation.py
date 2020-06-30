@@ -1,29 +1,28 @@
 import torch
 import torch.nn as nn
 from ..layers.linears import FCLayer
-from transformers import BertPreTrainedModel,BertModel
+from transformers import BertPreTrainedModel, BertModel
 
 
 class REBERT(BertPreTrainedModel):
-    def __init__(self,config):
+    def __init__(self, config):
         super(REBERT, self).__init__(config)
         self.num_labels = config.num_labels
         self.bert = BertModel(config)
-
         self.cls_fc_layer = FCLayer(config.hidden_size, config.hidden_size, 0.1)
         self.entity_fc_layer = FCLayer(config.hidden_size, config.hidden_size, 0.1)
-        self.label_classifier = FCLayer(config.hidden_size * 3, config.num_labels,0.1, use_activation=False)
+        self.label_classifier = FCLayer(config.hidden_size * 3, config.num_labels, 0.1, use_activation=False)
 
-    def entity_average(self,hidden_output,e_mask):
-        e_mask_unsqueeze = e_mask.unsqueeze(1) # [b,1,j-i+1]
-        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1) # (batch_size,1)
-        sum_vector = torch.bmm(e_mask_unsqueeze.float(),hidden_output).squeeze(1)# [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
+    def entity_average(self, hidden_output, e_mask):
+        e_mask_unsqueeze = e_mask.unsqueeze(1)  # [b,1,j-i+1]
+        length_tensor = (e_mask != 0).sum(dim=1).unsqueeze(1)  # (batch_size,1)
+        sum_vector = torch.bmm(e_mask_unsqueeze.float(), hidden_output).squeeze(
+            1)  # [b, 1, j-i+1] * [b, j-i+1, dim] = [b, 1, dim] -> [b, dim]
         avg_vector = sum_vector.float() / length_tensor.float()  # broadcasting
         return avg_vector
 
-    def forward(self,input_ids,attention_mask,token_type_ids,labels,e1_mask,e2_mask):
-        outputs = self.bert(input_ids, attention_mask=attention_mask,
-                            token_type_ids=token_type_ids)
+    def forward(self, input_ids, attention_mask, token_type_ids, labels, e1_mask, e2_mask):
+        outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
         pooled_output = outputs[1]
         # Average

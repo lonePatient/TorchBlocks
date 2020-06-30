@@ -7,6 +7,7 @@ from ..layers.linears import PoolerEndLogits, PoolerStartLogits
 from transformers import BertModel, BertPreTrainedModel
 from torchblocks.losses.span_loss import SpanLoss
 
+
 class BertSoftmaxForNer(BertPreTrainedModel):
     def __init__(self, config):
         super(BertSoftmaxForNer, self).__init__(config)
@@ -16,16 +17,13 @@ class BertSoftmaxForNer(BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
         self.init_weights()
 
-    def forward(self,
-                input_ids,
+    def forward(self, input_ids,
                 attention_mask=None,
                 token_type_ids=None,
                 position_ids=None,
                 head_mask=None,
                 labels=None):
-        outputs = self.bert(input_ids=input_ids,
-                            attention_mask=attention_mask,
-                            token_type_ids=token_type_ids)
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
@@ -58,9 +56,7 @@ class BertCRFForNer(BertPreTrainedModel):
                 token_type_ids=None,
                 attention_mask=None,
                 labels=None):
-        outputs = self.bert(input_ids=input_ids,
-                            attention_mask=attention_mask,
-                            token_type_ids=token_type_ids)
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
@@ -87,9 +83,7 @@ class BertSpanForNer(BertPreTrainedModel):
                 attention_mask=None,
                 start_positions=None,
                 end_positions=None):
-        outputs = self.bert(input_ids=input_ids,
-                            attention_mask=attention_mask,
-                            token_type_ids=token_type_ids)
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
         sequence_output = self.dropout(sequence_output)
         start_logits = self.start_fc(sequence_output)
@@ -103,10 +97,9 @@ class BertSpanForNer(BertPreTrainedModel):
             label_logits = F.softmax(start_logits, -1)
         end_logits = self.end_fc(sequence_output, label_logits)
         outputs = (start_logits, end_logits,) + outputs[2:]
-
         if start_positions is not None and end_positions is not None:
             loss_fct = SpanLoss()
-            loss = loss_fct(input=(start_logits,end_logits),target=(start_positions,end_positions),masks=attention_mask)
+            loss = loss_fct(input=(start_logits, end_logits), target=(start_positions, end_positions),
+                            masks=attention_mask)
             outputs = (loss,) + outputs
         return outputs
-

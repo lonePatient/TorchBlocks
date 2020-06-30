@@ -1,6 +1,5 @@
 import torch.nn as nn
 from torch.nn.modules.loss import _Loss
-import torch
 
 
 class SpanLoss(_Loss):

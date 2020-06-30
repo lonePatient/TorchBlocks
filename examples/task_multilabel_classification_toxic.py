@@ -1,5 +1,4 @@
 import os
-import json
 import pandas as pd
 from torchblocks.metrics import AUC, MultiLabelReport
 from torchblocks.trainer import TextClassifierTrainer

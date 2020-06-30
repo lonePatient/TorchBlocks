@@ -28,11 +28,11 @@ def load_word2vec(filename, vocab, word_vecs):
             chars = []
             while True:
                 char = fin.read(1)
-                if char == b' ':
+                if char == ' ':
                     break
-                if char != b'\n':
+                if char != '\n':
                     chars.append(char)
-            word = b''.join(chars).decode('utf-8')
+            word = ''.join(chars)
             if word in vocab:
                 word_vecs[vocab[word]] = np.frombuffer(
                     fin.read(binary_len), dtype='float32')

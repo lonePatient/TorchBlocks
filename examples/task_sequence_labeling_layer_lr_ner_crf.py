@@ -1,5 +1,4 @@
 import os
-
 from torchblocks.metrics import NERScore
 from torchblocks.trainer import SequenceLabelingTrainer
 from torchblocks.callback import TrainLogger
@@ -9,7 +8,6 @@ from torchblocks.utils import prepare_device, get_checkpoints
 from torchblocks.data import CNTokenizer
 from torchblocks.models.nn import BertCRFForNer
 from torchblocks.optim import AdamW
-from torchblocks.optim.lr_scheduler import get_linear_schedule_with_warmup
 from transformers import WEIGHTS_NAME, BertConfig
 
 MODEL_CLASSES = {

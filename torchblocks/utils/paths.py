@@ -158,7 +158,7 @@ def save_model(model, model_path):
     torch.save(state_dict, model_path)
 
 
-def load_model(model, model_path):
+def load_model(model, model_path,key='state_dict'):
     '''
     加载模型
     :param model:
@@ -169,7 +169,7 @@ def load_model(model, model_path):
     '''
     logger.info(f"loading model from {str(model_path)} .")
     states = torch.load(model_path)
-    state = states['state_dict']
+    state = states[key]
     if isinstance(model, nn.DataParallel):
         model.module.load_state_dict(state)
     else:

@@ -93,7 +93,6 @@ class TrainerBase:
         for key, value in kwargs.items():
             if key not in self.records:
                 self.records[key] = value
-
         for metric in self.metrics:
             metric.reset()
 
@@ -116,8 +115,7 @@ class TrainerBase:
         Setup the optimizer and the learning rate scheduler.
         '''
         warmup_steps = int(t_total * self.args.warmup_proportion)
-        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer,
-                                                    num_warmup_steps=warmup_steps,
+        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=warmup_steps,
                                                     num_training_steps=t_total)
         return scheduler
 
@@ -216,10 +214,8 @@ class TrainerBase:
         for epoch in range(0, int(self.args.num_train_epochs)):
             self.build_record_object()
             pbar = ProgressBar(n_total=len(train_dataloader), desc='Training')
-            a = 0
             for step, batch in enumerate(train_dataloader):
                 loss = self._train_step(model, batch, optimizer)
-                a = a+loss
                 if (step + 1) % self.args.gradient_accumulation_steps == 0:
                     self._train_update(model, optimizer, loss, scheduler)
                     if self.args.do_ema:
@@ -229,10 +225,10 @@ class TrainerBase:
                         and self.args.logging_steps > 0
                         and self.global_step % self.args.logging_steps == 0
                 ):
-                    print(" ")
-                    print(a)
                     if self.args.do_ema:
                         ema.apply_shadow(model)
+                    self.logger.add_value(value=self.records['loss_meter'].avg, step=self.global_step,
+                                          name='train_loss')
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
@@ -250,7 +246,7 @@ class TrainerBase:
                             state=state,
                             current=self.records['result'][self.model_checkpoint.monitor],
                         )
-            if not self.scheduler_on_batch:
+            if not self.scheduler_on_batch:  # epoch scheduler
                 scheduler.step()
             # early_stopping
             if self.early_stopping:
@@ -398,9 +394,9 @@ class TrainerBase:
     def predict(self, model, test_dataset, prefix=''):
         test_dataloader = self.build_test_dataloader(test_dataset)
         self._predict_forward(model, test_dataloader, do_eval=False)
-        self.logger.info("   ")
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
         self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
 
     def _predict_forward(self, model, data_loader, do_eval, **kwargs):
+        self.build_record_object()
         raise NotImplementedError

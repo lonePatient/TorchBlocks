@@ -24,10 +24,14 @@ class BertWithMDP(BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, self.config.num_labels)
         self.init_weights()
 
-    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
-                head_mask=None, inputs_embeds=None, labels=None):
-        outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
-                            position_ids=position_ids)
+    def forward(self, input_ids,
+                attention_mask=None,
+                token_type_ids=None,
+                position_ids=None,
+                head_mask=None,
+                inputs_embeds=None,
+                labels=None):
+        outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         hidden_layers = outputs[2]
         cls_outputs = torch.stack([self.dropout(layer[:, 0, :]) for layer in hidden_layers], dim=2)
         cls_output = (torch.softmax(self.layer_weights, dim=0) * cls_outputs).sum(-1)

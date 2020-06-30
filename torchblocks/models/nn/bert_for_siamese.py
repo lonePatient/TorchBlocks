@@ -20,16 +20,9 @@ class BertForSiameseModel(BertPreTrainedModel):
                 a_attention_mask=None,
                 b_attention_mask=None,
                 labels=None):
-        a_outputs = self.bert(
-            input_ids=a_input_ids,
-            token_type_ids=a_token_type_ids,
-            attention_mask=a_attention_mask
-        )
-        b_outputs = self.bert(
-            input_ids=b_input_ids,
-            token_type_ids=b_token_type_ids,
-            attention_mask=b_attention_mask
-        )
+        a_outputs = self.bert(input_ids=a_input_ids, token_type_ids=a_token_type_ids, attention_mask=a_attention_mask)
+        b_outputs = self.bert(input_ids=b_input_ids, token_type_ids=b_token_type_ids, attention_mask=b_attention_mask)
+        # concat
         concated_pooled_output = torch.cat(
             [a_outputs[1], b_outputs[1], torch.abs(a_outputs[1] - b_outputs[1])], dim=1)
         concated_pooled_output = self.dropout(concated_pooled_output)

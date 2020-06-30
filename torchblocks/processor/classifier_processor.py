@@ -1,33 +1,25 @@
-import string
 import logging
 from .base import DataProcessor
 from .utils import InputFeatures
 
 logger = logging.getLogger(__name__)
 
-class TextClassifierProcessor(DataProcessor):
-    '''
-    encode_mode: 预处理方式.
-                ``one``:表示只有一个inputs
-                ``pair``：表示两个inputs，一般针对siamese类型网络
-                ``triple``： 表示三个inputs，一般针对triple 类型网络
-            (default: ``one``)
-    '''
 
-    def __init__(self,
-                 tokenizer,
-                 data_dir,
+class TextClassifierProcessor(DataProcessor):
+    def __init__(self, data_dir, tokenizer,
                  prefix='',
                  encode_mode='one',
-                 add_special_tokens=True,  # [CLS]XXXX[SEP] or [CLS]XXX[SEP]YYYY[SEP
+                 truncate_label=False,
+                 add_special_tokens=True,
                  pad_to_max_length=True):
 
         super().__init__(data_dir=data_dir,
+                         prefix=prefix,
                          tokenizer=tokenizer,
                          encode_mode=encode_mode,
-                         prefix=prefix)
-        self.pad_to_max_length = pad_to_max_length
-        self.add_special_tokens = add_special_tokens
+                         truncate_label=truncate_label,
+                         add_special_tokens=add_special_tokens,
+                         pad_to_max_length=pad_to_max_length)
 
     def convert_to_features(self, examples, label_list, max_seq_length):
         label_map = {label: i for i, label in enumerate(label_list)} if label_list is not None else {}
@@ -46,15 +38,15 @@ class TextClassifierProcessor(DataProcessor):
                     if isinstance(lb, str):
                         label_ids[label_map[lb]] = 1
                     elif isinstance(lb, (float, int)):
-                        label_ids[i] = lb
+                        label_ids[i] = int(lb)
                     else:
                         raise ValueError("multi label type: expected one of (str,float,int)")
             else:
                 label_ids = example.label_ids
             if example.label is not None:
-                if isinstance(example.label,(float,int)):
+                if isinstance(example.label, (float, int)):
                     label = int(example.label)
-                elif isinstance(example.label,str):
+                elif isinstance(example.label, str):
                     label = label_map[example.label]
                 else:
                     raise ValueError("label type: expected one of (str,float,int)")

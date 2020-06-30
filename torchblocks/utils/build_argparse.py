@@ -1,33 +1,34 @@
 import argparse
 
+
 def build_argparse(description=None):
     parser = argparse.ArgumentParser(description=description)
     # Required parameters
     parser.add_argument("--task_name", default=None, type=str, required=True,
-                        help="The name of the task to train selected in the list: ")
+                        help="The name of the task to train selected in the list")
     parser.add_argument("--data_dir", default=None, type=str, required=True,
-                        help="The input data dir. Should contain the training files for the CoNLL-2003 NER task.", )
+                        help="The input data dir. Should contain the training files for task.", )
     parser.add_argument("--model_type", default=None, type=str, required=True,
-                        help="Model type selected in the list: ")
+                        help="Model type selected in the list")
     parser.add_argument("--model_path", default=None, type=str, required=True,
-                        help="Path to pre-trained model or shortcut name selected in the list: " )
+                        help="Path to pre-trained model or shortcut name selected in the list")
     parser.add_argument("--output_dir", default=None, type=str, required=True,
                         help="The output directory where the model predictions and checkpoints will be written.", )
-
     parser.add_argument("--model_name", default=None, type=str,
-                        help="The name of the task to train selected in the list: ")
+                        help="The name of the task to train selected in the list.")
 
     # modelcheckpoint
-    parser.add_argument("--do_save_best", action='store_true',help='Whether to save best model')
-    parser.add_argument("--mcpt_mode", default='min', type=str,help='model checkpoint mode')
+    parser.add_argument("--do_save_best", action='store_true', help='Whether to save best model')
+    parser.add_argument("--mcpt_mode", default='min', type=str, help='model checkpoint mode')
     parser.add_argument("--monitor", default='eval_loss', type=str)
 
     # earlystopping
-    parser.add_argument("--patience", default=-1, type=int,help='Interval (number of epochs) between checkpoints')
+    parser.add_argument("--patience", default=-1, type=int, help='Interval (number of epochs) between checkpoints')
 
-    #Exponential Moving Average
-    parser.add_argument('--do_ema',action='store_true',help='Whether to run Exponential Moving Average')
-    parser.add_argument('--ema_decay',default=0.999,type=float)
+    # Exponential Moving Average
+    parser.add_argument('--do_ema', action='store_true', help='Whether to run Exponential Moving Average')
+    parser.add_argument('--ema_decay', default=0.999, type=float)
+
     # Other parameters
     parser.add_argument("--gpu", type=str, default='0', help='"0,1,.." or "0" or "" ')
     parser.add_argument("--config_name", default="", type=str,
@@ -50,7 +51,7 @@ def build_argparse(description=None):
                         help="Whether to run predictions on the test set.")
     parser.add_argument("--evaluate_during_training", action="store_true",
                         help="Whether to run evaluation during training at each logging step.", )
-    parser.add_argument("--checkpoint_number",type=int, default=0,
+    parser.add_argument("--checkpoint_number", type=int, default=0,
                         help="checkpoints ending with step number")
     parser.add_argument("--do_lower_case", action="store_true",
                         help="Set this flag if you are using an uncased model.")
@@ -64,7 +65,7 @@ def build_argparse(description=None):
     parser.add_argument("--learning_rate", default=5e-5, type=float,
                         help="The initial learning rate for Adam.")
 
-    parser.add_argument("--weight_decay", default=0.01,type=float,
+    parser.add_argument("--weight_decay", default=0.01, type=float,
                         help="Weight decay if we apply some.")
     parser.add_argument("--adam_epsilon", default=1e-8, type=float,
                         help="Epsilon for Adam optimizer.")
@@ -80,7 +81,7 @@ def build_argparse(description=None):
     parser.add_argument("--save_steps", type=int, default=50, help="Save checkpoint every X updates steps.")
     parser.add_argument("--eval_all_checkpoints", action="store_true",
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number", )
-    parser.add_argument("--predict_checkpoints",type=int, default=0,
+    parser.add_argument("--predict_checkpoints", type=int, default=0,
                         help="predict checkpoints starting with the same prefix as model_name ending and ending with step number")
     parser.add_argument("--overwrite_output_dir", action="store_true",
                         help="Overwrite the content of the output directory")

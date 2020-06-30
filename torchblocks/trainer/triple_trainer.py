@@ -7,7 +7,6 @@ from ..losses.triplet_loss import DISTANCE2METRIC
 
 class TripleTrainer(TrainerBase):
     def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
-
         super().__init__(args=args,
                          metrics=metrics,
                          logger=logger,

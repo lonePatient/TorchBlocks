@@ -37,14 +37,11 @@ class SequenceLabelingTrainer(TrainerBase):
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
-
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
-            self.save_predict_result(file_name=output_logits_file,
-                                     data=self.records['preds'])
+            self.save_predict_result(output_logits_file, self.records['preds'])
         self.print_evaluate_result()
         self.print_label_result(entity_value)
-
         if 'cuda' in str(self.args.device):
             torch.cuda.empty_cache()
 
@@ -67,16 +64,10 @@ class SequenceLabelingTrainer(TrainerBase):
             json_d['tag_sequence'] = " ".join([self.args.id2label[x] for x in pred])
             json_d['entities'] = entity_spans
             results.append(json_d)
-
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
-        self.save_predict_result(file_name=output_predict_file,
-                                 file_dir=self.args.output_dir,
-                                 data=results)
-
+        self.save_predict_result(output_predict_file, results, self.args.output_dir)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
-        self.save_predict_result(file_name=output_logits_file,
-                                 file_dir=self.args.output_dir,
-                                 data=self.records['preds'])
+        self.save_predict_result(output_logits_file, self.records['preds'], self.args.output_dir)
 
     def _predict_forward(self, model, data_loader, do_eval=True, **kwargs):
         self.build_record_object()
@@ -148,14 +139,11 @@ class SequenceLabelingSpanTrainer(TrainerBase):
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
-
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
-            self.save_predict_result(file_name=output_logits_file,
-                                     data=self.records['preds'])
+            self.save_predict_result(output_logits_file,self.records['preds'])
         self.print_evaluate_result()
         self.print_label_result(entity_value)
-
         if 'cuda' in str(self.args.device):
             torch.cuda.empty_cache()
 
@@ -172,14 +160,11 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             json_d['id'] = i
             json_d['entities'] = entity_spans
             results.append(json_d)
-
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
-        self.save_predict_result(file_name=output_predict_file,
-                                 data=results)
-
+        self.save_predict_result(output_predict_file,results)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
-        self.save_predict_result(file_name=output_logits_file,
-                                 data=self.records['preds'])
+        self.save_predict_result(output_logits_file,self.records['preds'])
+        return results
 
     def _predict_forward(self, model, data_loader, do_eval=True, **kwargs):
         self.build_record_object()

@@ -9,7 +9,18 @@ LOWERCASE_STRS = list(string.ascii_lowercase)  # 获取26个小写字
 
 
 class DataProcessor:
-    """Base class for processor converters """
+    """Base class for processor converters
+       data_dir: 数据目录
+       tokenizer: tokenizer
+       encode_mode: 预处理方式.
+                ``one``: 表示只有一个inputs
+                ``pair``: 表示两个inputs，一般针对siamese类型网络
+                ``triple``: 表示三个inputs，一般针对triple类型网络
+                (default: ``one``)
+        add_special_tokens: 是否增加[CLS]XXX[SEP], default: True
+        pad_to_max_length: 是否padding到最大长度, default: True
+        truncate_label: 是否label进行阶段，主要在collect_fn函数中，一般针对sequence labeling任务中，default: False
+    """
 
     def __init__(self, data_dir, tokenizer,
                  prefix='',
@@ -58,6 +69,9 @@ class DataProcessor:
         return inputs
 
     def get_batch_keys(self):
+        '''
+        inputs输入对应的keys，需要跟模型输入对应
+        '''
         keys = ['input_ids', 'attention_mask', 'token_type_ids']
         if self.encode_mode == 'one':
             return keys + ['labels']
@@ -67,6 +81,12 @@ class DataProcessor:
             return [f'{LOWERCASE_STRS[i]}_{item}' for i in range(3) for item in keys] + ['labels']
 
     def encode(self, texts, max_seq_length):
+        '''
+        Args:
+            texts: 列表形式
+            max_seq_length: 最大长度
+        Returns:
+        '''
         inputs = {}
         if self.encode_mode == 'one':
             # texts:[text_a,text_b]
@@ -87,7 +107,6 @@ class DataProcessor:
         return inputs
 
     def collate_fn(self, batch):
-
         """
         batch should be a list of (input_ids, attention_mask, *,*,*, labels) tuples...
         Returns a padded tensor of sequences sorted from longest to shortest,
@@ -133,7 +152,12 @@ class DataProcessor:
 
     def load_from_cache(self, max_seq_length, data_name, mode):
         '''
-        load feature cache
+        数据加载
+        Args:
+            max_seq_length: 最大长度
+            data_name: 数据名称
+            mode: 数据类型，可选['train', 'dev', 'test']
+        Returns:
         '''
         # Load processor features from cache or dataset file
         cached_features_file = f'cached_{mode}_{self.prefix}_{max_seq_length}'
@@ -158,7 +182,7 @@ class DataProcessor:
 
     def create_dataset(self, max_seq_length, data_name, mode):
         '''
-        dataset
+        将features转换为dataset
         '''
         features = self.load_from_cache(max_seq_length=max_seq_length, data_name=data_name, mode=mode)
         inputs = self.convert_to_tensors(features)
@@ -168,7 +192,7 @@ class DataProcessor:
 
     def print_examples(self, **kwargs):
         '''
-        打印一些样本信息
+        打印样本信息
         '''
         inputs = {}
         for key, value in kwargs.items():

@@ -9,7 +9,6 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import f1_score, classification_report
 from sklearn.metrics import matthews_corrcoef
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -18,12 +17,15 @@ def simple_accuracy(preds, labels):
 
 
 class Accuracy(Metric):
+    '''
+    Accuracy
+    '''
 
     def __init__(self):
         super().__init__()
 
     def update(self, input, target):
-        if input.dim()==1:
+        if input.dim() == 1:
             self.preds = input.numpy()
         else:
             self.preds = torch.argmax(input, dim=1).numpy()
@@ -40,6 +42,7 @@ class MattewsCorrcoef(Metric):
     '''
     Matthews Correlation Coefficient
     '''
+
     def __init__(self):
         super().__init__()
 
@@ -80,12 +83,11 @@ class AUC(Metric):
     '''
     Area Under Curve
     '''
+
     def __init__(self, task_type='binary', average='binary'):
         super(AUC, self).__init__()
-
         assert task_type in ['binary', 'multiclass']
         assert average in ['binary', 'micro', 'macro', 'samples', 'weighted']
-
         self.task_type = task_type
         self.average = average
 
@@ -113,7 +115,6 @@ class F1Score(Metric):
         super(F1Score).__init__()
         assert task_type in ['binary', 'multiclass']
         assert average in ['binary', 'micro', 'macro', 'samples', 'weighted']
-
         self.thresh = thresh
         self.task_type = task_type
         self.normalizate = normalizate
@@ -138,14 +139,12 @@ class F1Score(Metric):
 
     def update(self, input, target):
         self.y_true = tensor_to_numpy(target)
-
         if self.normalizate and self.task_type == 'binary':
             y_prob = tensor_to_numpy(input.sigmoid().data)
         elif self.normalizate and self.task_type == 'multiclass':
             y_prob = tensor_to_numpy(input.softmax(-1).data)
         else:
             y_prob = tensor_to_numpy(input)
-
         if self.task_type == 'binary':
             if self.thresh and self.search_thresh == False:
                 self.y_pred = (y_prob > self.thresh).astype(int)
@@ -153,7 +152,6 @@ class F1Score(Metric):
             else:
                 thresh, f1 = self.thresh_search(y_prob=y_prob)
                 print(f"Best thresh: {thresh:.4f} - F1 Score: {f1:.4f}")
-
         if self.task_type == 'multiclass':
             self.y_pred = np.argmax(y_prob, 1)
 
@@ -169,6 +167,7 @@ class ClassificationReport(Metric):
     '''
     classification report
     '''
+
     def __init__(self, target_names=None):
         super(ClassificationReport).__init__()
         self.target_names = target_names

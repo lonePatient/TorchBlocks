@@ -17,10 +17,10 @@ class FocalLoss(nn.Module):
 
         super(FocalLoss, self).__init__()
         self.num_labels = num_labels
-        self.activation_type = activation_type
         self.gamma = gamma
         self.alpha = alpha
         self.epsilon = epsilon
+        self.activation_type = activation_type
 
     def forward(self, input, target):
         """

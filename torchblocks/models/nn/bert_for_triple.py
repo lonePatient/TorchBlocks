@@ -21,21 +21,15 @@ class BertForTripletNet(BertPreTrainedModel):
                 c_attention_mask=None,
                 labels=None
                 ):
-        _, a_pooled_output = self.bert(
-            input_ids=a_input_ids,
-            token_type_ids=a_token_type_ids,
-            attention_mask=a_attention_mask
-        )
-        _, b_pooled_output = self.bert(
-            input_ids=b_input_ids,
-            token_type_ids=b_token_type_ids,
-            attention_mask=b_attention_mask
-        )
-        _, c_pooled_output = self.bert(
-            input_ids=c_input_ids,
-            token_type_ids=c_token_type_ids,
-            attention_mask=c_attention_mask
-        )
+        _, a_pooled_output = self.bert(input_ids=a_input_ids, token_type_ids=a_token_type_ids,
+                                       attention_mask=a_attention_mask
+                                       )
+        _, b_pooled_output = self.bert(input_ids=b_input_ids, token_type_ids=b_token_type_ids,
+                                       attention_mask=b_attention_mask
+                                       )
+        _, c_pooled_output = self.bert(input_ids=c_input_ids, token_type_ids=c_token_type_ids,
+                                       attention_mask=c_attention_mask
+                                       )
         outputs = ((a_pooled_output, b_pooled_output, c_pooled_output),)
         if labels is not None:
             loss_fct = TripletLoss(distance_metric=self.distance_metric, average=True)
