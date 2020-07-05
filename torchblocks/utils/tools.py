@@ -1,9 +1,11 @@
 import os
 import time
+import json
 import random
 import torch
 import numpy as np
 import logging
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,18 @@ def print_config(config):
     for k, v in config.items():
         info += f"\t{k} : {str(v)}\n"
     print("\n" + info + "\n")
+
+
+def to_json_string(data:Dict):
+    """Serializes this instance to a JSON string."""
+    return json.dumps(data, indent=2, sort_keys=True,cls=_Encoder)
+
+class _Encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, torch.device):
+            return str(obj)
+        else:
+            return super(_Encoder, self).default(obj)
 
 
 def seed_everything(seed=1029, deterministic_cudnn=False):
