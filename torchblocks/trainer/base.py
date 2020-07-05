@@ -6,12 +6,13 @@ from torch.utils.data.dataloader import DataLoader, default_collate
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler
 from torch.utils.data import SequentialSampler
+from torch.utils.tensorboard import SummaryWriter
 
 from ..optim import AdamW
 from ..optim.lr_scheduler import get_linear_schedule_with_warmup
 
 from ..utils.paths import save_pickle, json_to_text
-from ..utils.tools import seed_everything, AverageMeter
+from ..utils.tools import seed_everything, AverageMeter, to_json_string
 from ..callback import ModelCheckpoint, EarlyStopping
 from ..callback import ProgressBar, TrainLogger, EMA
 
@@ -64,6 +65,8 @@ class TrainerBase:
             raise ValueError(
                 "Parameter 'self.logger'  should be an instance of class `TrianLogger`. "
             )
+        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir,'tb_logs'))
+        self.tb_writer.add_text("args", to_json_string(self.args.__dict__))
 
         self.model_checkpoint = ModelCheckpoint(
             mode=self.args.mcpt_mode,
@@ -191,8 +194,10 @@ class TrainerBase:
         model.zero_grad()  # Reset gradients to zero
         self.global_step += 1
         self.records['loss_meter'].update(loss, n=1)
-        self.logger.add_value(value=loss, step=self.global_step, name='loss')
-        self.logger.add_value(value=scheduler.get_lr()[0], step=self.global_step, name="learning_rate")
+        self.tb_writer.add_scalar('loss', loss, self.global_step)
+        self.tb_writer.add_scalar('learning_rate', scheduler.get_lr()[0], self.global_step)
+        # self.logger.add_value(value=loss, step=self.global_step, name='loss')
+        # self.logger.add_value(value=scheduler.get_lr()[0], step=self.global_step, name="learning_rate")
 
     def train(self, model, train_dataset, eval_dataset):
         """
@@ -227,13 +232,15 @@ class TrainerBase:
                 ):
                     if self.args.do_ema:
                         ema.apply_shadow(model)
-                    self.logger.add_value(value=self.records['loss_meter'].avg, step=self.global_step,
-                                          name='train_loss')
+                    self.tb_writer.add_scalar('train_epoch_loss', self.records['loss_meter'].avg,
+                                              self.global_step / self.args.logging_steps)
+                    # self.logger.add_value(value=self.records['loss_meter'].avg, step=self.global_step,
+                    #                       name='train_loss')
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
                     # log save and plot
-                    self.logger.save()
+                    # self.logger.save()
                     # save model
                 if (self.args.local_rank in [-1, 0]
                         and self.args.save_steps > 0
@@ -255,6 +262,8 @@ class TrainerBase:
                     break
             if "cuda" in str(self.args.device):
                 torch.cuda.empty_cache()
+        if self.tb_writer:
+            self.tb_writer.close()
 
     def build_state_object(self, model, optimizer, scheduler, step, **kwargs):
         '''
@@ -347,7 +356,8 @@ class TrainerBase:
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(self.records['result'][key]))
-            self.logger.add_value(value=self.records['result'][key], step=self.global_step, name=key)
+            self.tb_writer.add_scalar(key,self.records['result'][key],self.global_step / self.args.logging_steps)
+            # self.logger.add_value(value=self.records['result'][key], step=self.global_step, name=key)
 
     def save_predict_result(self, file_name, data, file_dir=None):
         '''
