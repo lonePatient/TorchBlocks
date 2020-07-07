@@ -5,20 +5,18 @@ import os
 import torch
 import numpy as np
 import logging
+from ..utils.paths import ensure_dir
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SAVE_MODEL_NAME = 'checkpoint-'
+DEFAULT_SAVE_MODEL_NAME = 'checkpoint'
 
 
 class ModelCheckpoint(object):
-    def __init__(self, checkpoint_dir, monitor,
-                 mode='min',
+    def __init__(self, checkpoint_dir, monitor='eval_loss', mode='min',
                  save_best_only=False):
 
-        checkpoint_dir = checkpoint_dir
-        os.makedirs(checkpoint_dir, exist_ok=True)
-
+        ensure_dir(checkpoint_dir)
         self.base_path = checkpoint_dir
         self.monitor = monitor
         self.save_best_only = save_best_only
@@ -29,16 +27,13 @@ class ModelCheckpoint(object):
             self.monitor_op = np.greater
             self.best = -np.Inf
         if save_best_only:
-            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}best")
-            os.makedirs(self.output_dir, exist_ok=True)
+            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-best")
         else:
-            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}%s")
+            self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-%s")
 
     def save_checkpoint(self, state, save_dir):
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
-
-        assert 'model' in state, "state['model'] not exist"
+        ensure_dir(save_dir)
+        assert 'model' in state, "state['model'] does not exist."
         logger.info("Saving model checkpoint to %s", save_dir)
         model = state['model']
         if hasattr(model, 'save'):
@@ -72,7 +67,5 @@ class ModelCheckpoint(object):
                 self.save_checkpoint(state, self.output_dir)
         else:
             output_dir = self.output_dir % state['step']
-            if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
             logger.info(f" Step {state['step']} - {self.monitor}: {current:.5f} save model to disk.")
             self.save_checkpoint(state, output_dir)

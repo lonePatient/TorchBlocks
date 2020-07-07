@@ -5,7 +5,7 @@ import random
 import torch
 import numpy as np
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ def print_config(config):
     '''
     print config infomation
     '''
+    config = config.__dict__
     info = "Running with the following configs:\n"
     for k, v in config.items():
         info += f"\t{k} : {str(v)}\n"
@@ -93,7 +94,7 @@ def prepare_device(use_gpu, local_rank=-1):
         if len(n_gpu_use) == 0:
             device_type = 'cpu'
         else:
-            device_type = "cuda"
+            device_type = f"cuda:{n_gpu_use[0]}"
         n_gpu = torch.cuda.device_count()
         if len(n_gpu_use) > 0 and n_gpu == 0:
             logger.warning("Warning: There\'s no GPU available on this machine, training will be performed on CPU.")

@@ -4,6 +4,7 @@ export DATA_DIR=$CURRENT_DIR/dataset
 export OUTPUR_DIR=$CURRENT_DIR/outputs
 export TASK_NAME=cola
 
+# ------------------ save every epoch two gpus--------------
 python task_text_classification_mixout_cola.py \
   --model_type=bert \
   --model_path=$MODEL_DIR \
@@ -11,7 +12,7 @@ python task_text_classification_mixout_cola.py \
   --do_train \
   --do_lower_case \
   --gpu=0 \
-  --do_ema \
+  --mixout=0.3 \
   --monitor=eval_mcc \
   --data_dir=$DATA_DIR/${TASK_NAME}/ \
   --train_max_seq_length=128 \
@@ -19,7 +20,7 @@ python task_text_classification_mixout_cola.py \
   --per_gpu_train_batch_size=32 \
   --per_gpu_eval_batch_size=32 \
   --learning_rate=2e-5 \
-  --num_train_epochs=10.0 \
+  --num_train_epochs=3.0 \
   --logging_steps=268 \
   --save_steps=268 \
   --output_dir=$OUTPUR_DIR/${TASK_NAME}_output/ \

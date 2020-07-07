@@ -118,9 +118,8 @@ class FreeLB(object):
     '''
     https://arxiv.org/pdf/1909.11764.pdf
     '''
-    def __init__(self, adv_K, adv_lr, adv_init_mag,
-                 adv_max_norm=0.,
-                 adv_norm_type='l2'):
+
+    def __init__(self, adv_K, adv_lr, adv_init_mag, adv_max_norm=0., adv_norm_type='l2'):
         self.adv_K = adv_K
         self.adv_lr = adv_lr
         self.adv_max_norm = adv_max_norm
@@ -185,6 +184,7 @@ class ALUM(object):
     '''
     Adversarial Training for Large Neural Language Models
     '''
+
     def __init__(self, adv_lr, adv_K, adv_var=1e-5, adv_alpha=1.0, adv_gamma=1e-6, adv_norm_type='inf'):
         self.adv_var = adv_var
         self.adv_K = adv_K

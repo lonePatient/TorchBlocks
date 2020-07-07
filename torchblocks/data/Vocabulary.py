@@ -40,6 +40,9 @@ class Vocabulary(object):
             for i in range(100):
                 self.tokens_to_ids[f'[UNUSED{i}]'] = len(self.tokens_to_ids)
 
+    def __len__(self):
+        return len(self.tokens_to_ids)
+
     def update(self, word_list):
         '''
         依次增加序列中词在词典中的出现频率

@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-from ..utils.paths import save_json
+from ..utils.paths import save_json,ensure_dir
 plt.switch_backend('agg')  # 防止ssh上绘图问题
 
 
@@ -14,8 +14,7 @@ class TrainLogger:
         self.dicts = defaultdict(list)
         self.log_file_level = log_file_level
         self.log_dir = os.path.join(log_dir, 'logs')
-        if not os.path.exists(self.log_dir):
-            os.mkdir(self.log_dir)
+        ensure_dir(self.log_dir)
         time_ = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
         self.log_file = os.path.join(self.log_dir, self.prefix + f"_{time_}.log")
         self.json_file = os.path.join(self.log_dir, self.prefix + f"_{time_}.json")

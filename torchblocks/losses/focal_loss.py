@@ -7,7 +7,6 @@ class FocalLoss(nn.Module):
     """
     Softmax and sigmoid focal loss
     """
-
     def __init__(self,
                  num_labels,
                  activation_type='softmax',

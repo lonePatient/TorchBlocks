@@ -89,7 +89,6 @@ def save_numpy(data, file_path):
     :param file_path:
     :return:
     '''
-
     np.save(str(file_path), data)
 
 
@@ -99,8 +98,6 @@ def load_numpy(file_path):
     :param file_path:
     :return:
     '''
-    if not os.path.exists(file_path):
-        raise ValueError(f"{file_path} file does not exist")
     np.load(str(file_path))
 
 
@@ -111,8 +108,6 @@ def load_json(file_path):
     :param file_name:
     :return:
     '''
-    if not os.path.exists(file_path):
-        raise ValueError(f"{file_path} file does not exist")
     with open(str(file_path), 'r') as f:
         data = json.load(f)
     return data
@@ -199,6 +194,5 @@ def create_unique_dir(config, args):
     if config.fp16:
         new_dir += f'_fp16_{config.fp16_opt_level}'
     new_dir += f'_{args.seed}'
-    if not os.path.exists(new_dir):
-        os.makedirs(new_dir)
+    ensure_dir(new_dir)
     return new_dir

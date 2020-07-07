@@ -6,7 +6,6 @@ from .utils import initial_parameter
 class ConvolutionCharEncoder(nn.Module):
     r"""
     char级别的卷积编码器.
-    
     """
     def __init__(self, char_emb_size=50, feature_maps=(40, 30, 30), kernels=(1, 3, 5), initial_method=None):
         r"""

@@ -65,15 +65,20 @@ class TrainerBase:
             raise ValueError(
                 "Parameter 'self.logger'  should be an instance of class `TrianLogger`. "
             )
-        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir,'tb_logs'))
+
+        # tensorboard
+        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir, 'tb_logs'))
         self.tb_writer.add_text("args", to_json_string(self.args.__dict__))
 
+        # checkpoint
         self.model_checkpoint = ModelCheckpoint(
             mode=self.args.mcpt_mode,
             monitor=self.args.monitor,
             checkpoint_dir=self.args.output_dir,
             save_best_only=self.args.do_save_best
         )
+
+        # earlystopping
         if self.args.patience <= 0:
             self.early_stopping = None
         else:
@@ -110,7 +115,8 @@ class TrainerBase:
             {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
              "weight_decay": 0.0},
         ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon)
+        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon,
+                          weight_decay=self.args.weight_decay)
         return optimizer
 
     def build_scheduler(self, optimizer, t_total):
@@ -356,7 +362,7 @@ class TrainerBase:
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(self.records['result'][key]))
-            self.tb_writer.add_scalar(key,self.records['result'][key],self.global_step / self.args.logging_steps)
+            self.tb_writer.add_scalar(key, self.records['result'][key], self.global_step / self.args.logging_steps)
             # self.logger.add_value(value=self.records['result'][key], step=self.global_step, name=key)
 
     def save_predict_result(self, file_name, data, file_dir=None):

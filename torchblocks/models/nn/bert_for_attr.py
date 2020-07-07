@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-from ..layers.crf import CRF
-from transformers.modeling_bert import BertPreTrainedModel, BertModel
-from ..layers.attentions import CosAttention
 from torch.nn import LayerNorm
-
+from ..layers.crf import CRF
+from ..layers.attentions import CosAttention
+from transformers.modeling_bert import BertPreTrainedModel, BertModel
 
 class BertCRFForAttr(BertPreTrainedModel):
     def __init__(self, config):
@@ -26,10 +25,8 @@ class BertCRFForAttr(BertPreTrainedModel):
         self.init_weights()
 
     def forward(self, a_input_ids, b_input_ids,
-                a_token_type_ids=None,
-                b_token_type_ids=None,
-                a_attention_mask=None,
-                b_attention_mask=None,
+                a_token_type_ids=None,b_token_type_ids=None,
+                a_attention_mask=None,b_attention_mask=None,
                 labels=None):
         # bert
         outputs_title = self.bert(a_input_ids, a_token_type_ids, a_attention_mask)

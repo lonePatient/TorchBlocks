@@ -89,17 +89,22 @@ class SequenceLabelingSpanProcessor(DataProcessor):
                 logger.info("Writing example %d/%d" % (ex_index, len(examples)))
             texts = example.texts
             inputs = self.encode(texts=texts, max_seq_length=max_seq_length)
-
             start_positions = [self.pad_label_id] * max_seq_length
             end_positions = [self.pad_label_id] * max_seq_length
             for span in example.label_ids:
                 label = span[0]
-                start = span[1] + 1  # cls
-                end = span[2] + 1  # cls
-                if start > max_seq_length - 2:
+                if self.add_special_tokens:
+                    start = span[1] + 1  # cls
+                    end = span[2] + 1  # cls
+                    special_num = 2
+                else:
+                    start = span[1]
+                    end = span[2]
+                    special_num = 0
+                if start > max_seq_length - special_num:
                     continue
                 start_positions[start] = label2id[label]
-                if end > max_seq_length - 2:
+                if end > max_seq_length - special_num:
                     continue
                 end_positions[end] = label2id[label]
             assert len(start_positions) == max_seq_length

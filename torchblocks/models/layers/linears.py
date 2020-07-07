@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class FeedForwardNetwork(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0):
         super(FeedForwardNetwork, self).__init__()
@@ -50,17 +51,3 @@ class PoolerEndLogits(nn.Module):
             else:
                 x = x * (1 - p_mask) - 1e30 * p_mask
         return x
-
-class FCLayer(nn.Module):
-    def __init__(self, input_dim, output_dim, dropout_rate=0., use_activation=True):
-        super(FCLayer, self).__init__()
-        self.use_activation = use_activation
-        self.dropout = nn.Dropout(dropout_rate)
-        self.linear = nn.Linear(input_dim, output_dim)
-        self.tanh = nn.Tanh()
-
-    def forward(self, x):
-        x = self.dropout(x)
-        if self.use_activation:
-            x = self.tanh(x)
-        return self.linear(x)

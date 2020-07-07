@@ -6,17 +6,18 @@ from torchblocks.processor import SequenceLabelingProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
 from torchblocks.data import CNTokenizer
-from torchblocks.models.nn import BertCRFForNer
 from torchblocks.optim import AdamW
+from torchblocks.models.nn import BertCRFForNer
 from transformers import WEIGHTS_NAME, BertConfig
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertCRFForNer, CNTokenizer)
 }
 
+
 class CnerProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir,prefix=''):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir,prefix=prefix)
+    def __init__(self, tokenizer, data_dir, prefix=''):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -72,8 +73,8 @@ class CnerProcessor(SequenceLabelingProcessor):
 
 
 class LayerLRTrainer(SequenceLabelingTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None, ):
-        super().__init__(args=args,metrics=metrics,logger=logger,
+    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
+        super().__init__(args=args, metrics=metrics, logger=logger,
                          batch_input_keys=batch_input_keys,
                          collate_fn=collate_fn)
 
@@ -102,7 +103,8 @@ class LayerLRTrainer(SequenceLabelingTrainer):
             {'params': [p for n, p in linear_param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0,
              'lr': self.args.crf_learning_rate}
         ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon)
+        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon,
+                          weight_decay=self.args.weight_decay)
         return optimizer
 
 
@@ -112,56 +114,47 @@ def main():
     parser.add_argument('--use_crf', action='store_true', default=True)
     parser.add_argument('--crf_learning_rate', default=1e-3, type=float)
     args = parser.parse_args()
-
+    # output dir
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
     args.output_dir = args.output_dir + '{}'.format(args.model_name)
     os.makedirs(args.output_dir, exist_ok=True)
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
-
+    # device
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
-
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-
+    # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = CnerProcessor(tokenizer, args.data_dir,prefix=prefix)
+    processor = CnerProcessor(tokenizer, args.data_dir, prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}
     args.id2label = id2label
     args.num_labels = num_labels
-
+    # model
     logger.info("initializing model and config")
-    config = config_class.from_pretrained(args.model_path,
-                                          num_labels=num_labels,
+    config = config_class.from_pretrained(args.model_path, num_labels=num_labels,
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
-
-
+    # trainer
     logger.info("initializing traniner")
-    trainer = LayerLRTrainer(logger=logger,args=args,
+    trainer = LayerLRTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
                              batch_input_keys=processor.get_batch_keys(),
-                             collate_fn=processor.collate_fn,
                              metrics=[NERScore(id2label, markup=args.markup)])
     if args.do_train:
-        train_dataset = processor.create_dataset(max_seq_length=args.train_max_seq_length,
-                                                 data_name='train.char.bmes',
-                                                 mode='train')
-        eval_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='dev.char.bmes',
-                                                mode='dev')
+        train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.char.bmes', 'train')
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.char.bmes', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
-
+    # do eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
-        eval_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='dev.char.bmes', mode='dev')
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.char.bmes', 'dev')
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints or args.checkpoint_number > 0:
             checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -176,10 +169,9 @@ def main():
                 results.update(result)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         dict_to_text(output_eval_file, results)
-
+    # do predict
     if args.do_predict:
-        test_dataset = processor.create_dataset(max_seq_length=args.eval_max_seq_length,
-                                                data_name='test.char.bmes', mode='test')
+        test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.char.bmes', 'test')
         if args.checkpoint_number == 0:
             raise ValueError("checkpoint number should > 0,but get %d", args.checkpoint_number)
         checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)

@@ -18,6 +18,7 @@ INIT2FCT = {'xavier_uniform': init.xavier_uniform_,
             'uniform': init.uniform_
             }
 
+
 class TrainModel(nn.Module):
     def __init__(self, config, *inputs, **kwargs):
         super().__init__()
@@ -32,7 +33,7 @@ class TrainModel(nn.Module):
         # Save config in model
         self.config = config
 
-    def save(self, save_directory):
+    def save_pretrained(self, save_directory):
         """ Save a model and its configuration file to a directory, so that it
             can be re-loaded using the `:func:`~transformers.PreTrainedModel.from_pretrained`` class method.
 
@@ -46,21 +47,21 @@ class TrainModel(nn.Module):
         model_to_save = self.module if hasattr(self, "module") else self
         # If we save using the predefined names, we can load using `from_pretrained`
         output_model_file = os.path.join(save_directory, WEIGHTS_NAME)
-        if hasattr(model_to_save.config, 'save'):
-            model_to_save.config.save(save_directory)
+        if hasattr(model_to_save.config, 'save_pretrained'):
+            model_to_save.config.save_pretrained(save_directory)
         else:
             raise ValueError("Make sure that:\n 'config' is a correct config file")
         torch.save(model_to_save.state_dict(), output_model_file)
         logger.info("Model weights saved in {}".format(output_model_file))
 
     @classmethod
-    def load(cls, model_path, *model_args, **kwargs):
+    def from_pretrained(cls, model_path, *model_args, **kwargs):
         config = kwargs.pop("config", None)
         state_dict = kwargs.pop("state_dict", None)
         # Load config if we don't provide a configuration
         if not isinstance(config, TrainConfig):
             config_path = config if config is not None else model_path
-            config, model_kwargs = cls.config_class.load(
+            config, model_kwargs = cls.config_class.from_pretrained(
                 config_path,
                 *model_args,
                 **kwargs)
@@ -72,9 +73,10 @@ class TrainModel(nn.Module):
                 # Load from a PyTorch checkpoint
                 archive_file = os.path.join(model_path, WEIGHTS_NAME)
             else:
-                raise EnvironmentError(
+                logger.warning(
                     "Error no file named {} found in directory {} ".format(
                         [WEIGHTS_NAME, ], model_path))
+                archive_file = None
         elif os.path.isfile(model_path):
             archive_file = model_path
         # Instantiate model.
@@ -83,7 +85,7 @@ class TrainModel(nn.Module):
             try:
                 state_dict = torch.load(archive_file, map_location="cpu")
             except Exception:
-                raise OSError(
+                logger.warning(
                     "Unable to load weights from pytorch checkpoint file. ")
         if state_dict:
             model.load_state_dict(state_dict)

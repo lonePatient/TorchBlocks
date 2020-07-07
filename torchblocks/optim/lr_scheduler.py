@@ -147,7 +147,7 @@ class CyclicLR(object):
         >>>         optimizer.zero_grad()
         >>>         loss.backward()
         >>>         optimizer.step()
-        >>>         scheduler.batch_step()
+        >>>         scheduler.step()
         >>>     validate(...)
     '''
     def __init__(self, optimizer, base_lr=1e-3, max_lr=6e-3,
@@ -227,7 +227,7 @@ class CyclicLR(object):
             lrs.append(lr)
         return lrs
 
-    def batch_step(self, batch_iteration=None):
+    def step(self, batch_iteration=None):
         if batch_iteration is None:
             batch_iteration = self.last_batch_iteration + 1
         self.last_batch_iteration = batch_iteration
@@ -255,7 +255,7 @@ class CosineLRWithRestarts(object):
         >>>         optimizer.zero_grad()
         >>>         loss.backward()
         >>>         optimizer.step()
-        >>>         scheduler.batch_step()
+        >>>         scheduler.step()
         >>>     validate(...)
     """
 
@@ -334,7 +334,7 @@ class CosineLRWithRestarts(object):
         self.iteration = 0
         self.batch_increments = list(np.linspace(0, 1, batches_in_epoch))
 
-    def batch_step(self):
+    def step(self):
         self.last_epoch += 1
         self.t_epoch += 1
         self._set_batch_increment()
@@ -364,7 +364,7 @@ class NoamLR(object):
         >>>         optimizer.zero_grad()
         >>>         loss.backward()
         >>>         optimizer.step()
-        >>>         scheduler.batch_step(global_step)
+        >>>         scheduler.step(global_step)
         >>>     validate(...)
     '''
     def __init__(self,d_model,factor,warm_up,optimizer):
@@ -378,7 +378,7 @@ class NoamLR(object):
         lr = self.factor * (self.d_model ** (-0.5) * min(step ** (-0.5),step * self.warm_up ** (-1.5)))
         return lr
 
-    def batch_step(self,step):
+    def step(self,step):
         '''
         update parameters and rate
         :return:

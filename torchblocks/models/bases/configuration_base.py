@@ -7,9 +7,10 @@ import os
 logger = logging.getLogger(__name__)
 CONFIG_NAME = 'config.json'
 
+
 class TrainConfig(object):
     def __init__(self, **kwargs):
-        self.model_type = kwargs.pop("model_type",'')
+        self.model_type = kwargs.pop("model_type", '')
         # Additional attributes without default values
         for key, value in kwargs.items():
             try:
@@ -18,7 +19,7 @@ class TrainConfig(object):
                 logger.error("Can't set {} with value {} for {}".format(key, value, self))
                 raise err
 
-    def save(self, save_directory):
+    def save_pretrained(self, save_directory):
         assert os.path.isdir(
             save_directory
         ), "Saving path should be a directory where the model and configuration can be saved"
@@ -28,7 +29,7 @@ class TrainConfig(object):
         logger.info("Configuration saved in {}".format(output_config_file))
 
     @classmethod
-    def load(cls, trained_model_path, **kwargs):
+    def from_pretrained(cls, trained_model_path, **kwargs):
         config_dict, kwargs = cls.get_config_dict(trained_model_path, **kwargs)
         return cls.from_dict(config_dict, **kwargs)
 

@@ -1,6 +1,5 @@
 import os
 import json
-import torch
 from torchblocks.metrics import NERScore
 from torchblocks.trainer import SequenceLabelingTrainer
 from torchblocks.callback import TrainLogger
@@ -8,37 +7,52 @@ from torchblocks.processor import SequenceLabelingProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
 from torchblocks.data import CNTokenizer
-from torchblocks.models.nn import BertCRFForAttr
-from transformers import WEIGHTS_NAME, BertConfig
+from torchblocks.data import Vocabulary, VOCAB_NAME
+from torchblocks.models.nn.lstm_crf import LSTMCRF
+from torchblocks.models.bases import TrainConfig
+from torchblocks.models.bases import WEIGHTS_NAME
 
 MODEL_CLASSES = {
-    'bert': (BertConfig, BertCRFForAttr, CNTokenizer)
+    'lstm-crf': (TrainConfig, LSTMCRF, CNTokenizer)
 }
 
 
-class AttrProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir, encode_mode='pair', prefix=''):
-        super().__init__(tokenizer=tokenizer, encode_mode=encode_mode, data_dir=data_dir, prefix=prefix)
+def build_vocab(data_dir, vocab_dir):
+    '''
+    构建vocab
+
+    '''
+    vocab = Vocabulary()
+    vocab_path = os.path.join(vocab_dir, VOCAB_NAME)
+    if os.path.exists(vocab_path):
+        vocab.load_vocab(str(vocab_path))
+    else:
+        files = ["train.json", "dev.json", "test.json"]
+        for file in files:
+            with open(os.path.join(data_dir, file), 'r') as fr:
+                for line in fr:
+                    line = json.loads(line.strip())
+                    text = line['text']
+                    vocab.update(list(text))
+        vocab.build_vocab()
+        vocab.save_vocab(vocab_path)
+    print("vocab size: ", len(vocab))
+
+
+class CluenerProcessor(SequenceLabelingProcessor):
+    def __init__(self, tokenizer, data_dir, prefix=''):
+        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix, add_special_tokens=False)
 
     def get_labels(self):
-        return ["X", "B-a", "I-a", 'S-a', 'O', "[START]", "[END]"]
-
-    def collate_fn(self, batch):
-
-        """
-        batch should be a list of (input_ids, attention_mask, *,*,*, labels) tuples...
-        Returns a padded tensor of sequences sorted from longest to shortest,
-        """
-        batch = list(map(torch.stack, zip(*batch)))
-        max_seq_len = torch.max(torch.sum(batch[1], 1)).item()  # title
-        max_attr_len = torch.max(torch.sum(batch[4], 1)).item()  # attribute
-        for i in [0, 1, 2, 6]:
-            if batch[i].size()[1] > max_seq_len:
-                batch[i] = batch[i][:, :max_seq_len]
-        for i in [3, 4, 5]:
-            if batch[i].size()[1] > max_attr_len:
-                batch[i] = batch[i][:, :max_attr_len]
-        return batch
+        """See base class."""
+        # 默认第一个为X
+        return ["X", "B-address", "B-book", "B-company", 'B-game', 'B-government', 'B-movie', 'B-name',
+                'B-organization', 'B-position', 'B-scene', "I-address",
+                "I-book", "I-company", 'I-game', 'I-government', 'I-movie', 'I-name',
+                'I-organization', 'I-position', 'I-scene',
+                "S-address", "S-book", "S-company", 'S-game', 'S-government', 'S-movie',
+                'S-name', 'S-organization', 'S-position',
+                'S-scene', 'O', "[START]", "[END]"]
 
     def read_data(self, input_file):
         """Reads a json list file."""
@@ -46,20 +60,20 @@ class AttrProcessor(SequenceLabelingProcessor):
         with open(input_file, 'r') as f:
             for line in f:
                 line = json.loads(line.strip())
-                title = line['title']
-                attr = line['attribute']
-                value = line['value']
-                labels = ['O'] * len(title)
-                if value != '':
-                    assert value in title
-                    s = title.find(value)
-                    if len(value) == 1:
-                        labels[s] = 'S-a'
-                    else:
-                        labels[s] = 'B-a'
-                        labels[s + 1:s + len(value)] = ['I-a'] * (len(value) - 1)
-                assert len(labels) == len(title)
-                lines.append({"title": title, "labels": labels, 'attr': attr})
+                text = line['text']
+                label_entities = line.get('label', None)
+                labels = ['O'] * len(text)
+                if label_entities is not None:
+                    for key, value in label_entities.items():
+                        for sub_name, sub_index in value.items():
+                            for start_index, end_index in sub_index:
+                                assert text[start_index:end_index + 1] == sub_name
+                                if start_index == end_index:
+                                    labels[start_index] = 'S-' + key
+                                else:
+                                    labels[start_index] = 'B-' + key
+                                    labels[start_index + 1:end_index + 1] = ['I-' + key] * (len(sub_name) - 1)
+                lines.append({"text": text, "labels": labels})
         return lines
 
     def create_examples(self, lines, set_type):
@@ -67,18 +81,16 @@ class AttrProcessor(SequenceLabelingProcessor):
         examples = []
         for (i, line) in enumerate(lines):
             guid = "%s-%s" % (set_type, i)
-            title = line['title']
-            attribute = line['attr']
+            text_a = line['text']
             labels = line['labels']
-            # 标签序列使用label_ids
-            examples.append(InputExample(guid=guid, texts=[[title, None], [attribute, None]], label_ids=labels))
+            examples.append(InputExample(guid=guid, texts=[text_a, None], label_ids=labels))
         return examples
 
 
 def main():
     parser = build_argparse()
     parser.add_argument('--markup', type=str, default='bios', choices=['bios', 'bio'])
-    parser.add_argument('--max_attr_length', default=16, type=int)
+    parser.add_argument('--use_crf', action='store_true', default=True)
     args = parser.parse_args()
     # output dir
     if args.model_name is None:
@@ -91,13 +103,15 @@ def main():
     # device
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
+    # build vocab
+    build_vocab(args.data_dir, vocab_dir=args.model_path)
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = AttrProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = CluenerProcessor(tokenizer, args.data_dir, prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}
@@ -111,18 +125,18 @@ def main():
     model.to(args.device)
     # Trainer
     logger.info("initializing traniner")
-    trainer = SequenceLabelingTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
+    trainer = SequenceLabelingTrainer(args=args, logger=logger, collate_fn=processor.collate_fn,
                                       batch_input_keys=processor.get_batch_keys(),
                                       metrics=[NERScore(id2label, markup=args.markup)])
     # do train
     if args.do_train:
-        train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.char.bmes', 'train')
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.char.bmes', 'dev')
+        train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.json', 'train', )
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.json', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
     # do eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.char.bmes', 'dev')
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.json', 'dev')
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints or args.checkpoint_number > 0:
             checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -139,7 +153,7 @@ def main():
         dict_to_text(output_eval_file, results)
     # do predict
     if args.do_predict:
-        test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.char.bmes', 'test')
+        test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.json', 'test')
         if args.checkpoint_number == 0:
             raise ValueError("checkpoint number should > 0,but get %d", args.checkpoint_number)
         checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -148,7 +162,6 @@ def main():
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
             trainer.predict(model, test_dataset=test_dataset, prefix=str(global_step))
-
 
 if __name__ == "__main__":
     main()

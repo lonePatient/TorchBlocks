@@ -11,9 +11,7 @@ class KL(nn.Module):
     def forward(self, input, target):
         input = input.float()
         target = target.float()
-        loss = F.kl_div(F.log_softmax(input, dim=-1),
-                        F.softmax(target, dim=-1),
-                        reduction='batchmean')
+        loss = F.kl_div(F.log_softmax(input, dim=-1), F.softmax(target, dim=-1), reduction='batchmean')
         return loss
 
 

@@ -25,6 +25,7 @@ class BertForSiameseModel(BertPreTrainedModel):
         # concat
         concated_pooled_output = torch.cat(
             [a_outputs[1], b_outputs[1], torch.abs(a_outputs[1] - b_outputs[1])], dim=1)
+
         concated_pooled_output = self.dropout(concated_pooled_output)
         logits = self.seq_relationship(concated_pooled_output)
         outputs = (logits,)
