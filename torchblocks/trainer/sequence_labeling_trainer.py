@@ -82,7 +82,10 @@ class SequenceLabelingTrainer(TrainerBase):
                 self.records['loss_meter'].update(loss.item(), n=1)
                 self.records['target'].extend(tensor_to_list(inputs['labels']))
             else:
-                logits = outputs[0]
+                if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
+                    logits = outputs[1]
+                else:
+                    logits = outputs[0]
             if self.args.use_crf:
                 crf_model = model.module.crf if isinstance(model, nn.DataParallel) else model.crf
                 tags = crf_model.decode(logits, inputs['attention_mask'])
@@ -181,7 +184,10 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                 end_positions = tensor_to_list(inputs['end_positions'])
                 self.records['target'].extend(zip(start_positions, end_positions))
             else:
-                start_logits, end_logits = outputs[:2]
+                if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
+                    _,start_logits, end_logits = outputs[:3]
+                else:
+                    start_logits, end_logits = outputs[:2]
             start_logits = tensor_to_list(torch.argmax(start_logits, -1))
             end_logits = tensor_to_list(torch.argmax(end_logits, -1))
             self.records['preds'].extend(zip(start_logits, end_logits))
