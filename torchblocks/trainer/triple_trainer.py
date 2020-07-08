@@ -29,7 +29,10 @@ class TripleTrainer(TrainerBase):
                 self.records['target'].append(tensor_to_cpu(labels))
                 self.records['loss_meter'].update(loss.item(), n=1)
             else:
-                logits = outputs[0]
+                if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
+                    logits = outputs[1]
+                else:
+                    logits = outputs[0]
             anchor, positive, negative = logits
             distance_metric = DISTANCE2METRIC[self.args.distance_metric]
             distance_positive = distance_metric(anchor, positive)
