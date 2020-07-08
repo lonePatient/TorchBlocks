@@ -113,11 +113,15 @@ class DataProcessor:
         """
         batch = list(map(torch.stack, zip(*batch)))
         max_seq_len = torch.max(torch.sum(batch[1], 1)).item()
-        for i in range(len(batch) - 1):
-            if batch[i].size()[1] > max_seq_len:
-                batch[i] = batch[i][:, :max_seq_len]
-        if self.truncate_label:
-            batch[-1] = batch[-1][:, :max_seq_len]
+        keys_num = len(self.get_batch_keys())
+        input_keys_num = len(batch)
+        for i in range(input_keys_num): # test时一般label为None，所以导致keys_num!=input_keys_num
+            if i == input_keys_num and self.truncate_label and i == keys_num:
+                if batch[i].size()[1] > max_seq_len:
+                    batch[i] = batch[i][:, :max_seq_len]
+            else:
+                if batch[i].size()[1] > max_seq_len:
+                    batch[i] = batch[i][:, :max_seq_len]
         return batch
 
     def convert_to_tensors(self, features):
@@ -187,7 +191,7 @@ class DataProcessor:
         features = self.load_from_cache(max_seq_length=max_seq_length, data_name=data_name, mode=mode)
         inputs = self.convert_to_tensors(features)
         inputs_keys = self.get_batch_keys()
-        dataset = TensorDataset(*[inputs[key] for key in inputs_keys if inputs[key] is not None])
+        dataset = TensorDataset(*[inputs[key] for key in inputs_keys if inputs.get(key,None) is not None])
         return dataset
 
     def print_examples(self, **kwargs):
