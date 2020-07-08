@@ -52,10 +52,8 @@ class TextClassifierProcessor(DataProcessor):
                     raise ValueError("label type: expected one of (str,float,int)")
             else:
                 label = example.label
-            if label is not None:
-                inputs['label'] = label
-            if label_ids is not None:
-                inputs['label_ids'] = label_ids
+            inputs['label'] = label
+            inputs['label_ids'] = label_ids
             if ex_index < 5:
                 self.print_examples(**inputs)
             features.append(InputFeatures(**inputs))
