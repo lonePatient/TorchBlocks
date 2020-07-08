@@ -28,7 +28,10 @@ class TextClassifierTrainer(TrainerBase):
                 self.records['target'].append(tensor_to_cpu(labels))
                 self.records['loss_meter'].update(loss.item(), n=1)
             else:
-                logits = outputs[0]
+                if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
+                    logits = outputs[1]
+                else:
+                    logits = outputs[0]
             self.records['preds'].append(tensor_to_cpu(logits))
             pbar(step)
         self.records['preds'] = torch.cat(self.records['preds'], dim=0)
