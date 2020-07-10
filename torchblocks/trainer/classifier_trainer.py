@@ -24,11 +24,7 @@ class TextClassifierTrainer(TrainerBase):
                 self.records['target'].append(tensor_to_cpu(labels))
                 self.records['loss_meter'].update(loss.item(), n=1)
             else:
-<<<<<<< HEAD
                 if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
-=======
-                if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
                     logits = outputs[1]
                 else:
                     logits = outputs[0]

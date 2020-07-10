@@ -144,7 +144,7 @@ class TrainerBase:
         if eval_dataset is None:
             raise ValueError("Trainer: evaluation requires an eval_dataset.")
         batch_size = self.args.per_gpu_eval_batch_size * max(1, self.args.n_gpu)
-        self.logger.info("\n***** Running evaluation %s *****", self.args.task_name)
+        self.logger.info("***** Running evaluation %s *****", self.args.task_name)
         self.logger.info("  Num examples = %d", len(eval_dataset))
         self.logger.info("  Batch size = %d", batch_size)
         sampler = SequentialSampler(eval_dataset) if self.args.local_rank == -1 else DistributedSampler(eval_dataset)
@@ -358,7 +358,7 @@ class TrainerBase:
         print(' ')
         if len(self.records['result']) == 0:
             self.logger.warning("eval record is empty")
-        self.logger.info("\n***** Eval results of %s *****", self.args.task_name)
+        self.logger.info("***** Eval results of %s *****", self.args.task_name)
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(self.records['result'][key]))

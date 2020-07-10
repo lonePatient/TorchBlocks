@@ -170,13 +170,8 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                 end_positions = tensor_to_list(inputs['end_positions'])
                 self.records['target'].extend(zip(start_positions, end_positions))
             else:
-<<<<<<< HEAD
                 if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
                     _, start_logits, end_logits = outputs[:3]
-=======
-                if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
-                    _,start_logits, end_logits = outputs[:3]
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
                 else:
                     start_logits, end_logits = outputs[:2]
             start_logits = tensor_to_list(torch.argmax(start_logits, -1))

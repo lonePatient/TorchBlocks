@@ -12,13 +12,7 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
-
 class WSCProcessor(TextClassifierProcessor):
-<<<<<<< HEAD
-=======
-    def __init__(self, tokenizer, data_dir, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
 
     def get_labels(self):
         """See base class."""
@@ -60,12 +54,7 @@ class WSCProcessor(TextClassifierProcessor):
             text_a = "".join(text_a_list)
             text_b = None
             label = str(line['label']) if set_type != 'test' else None
-            examples.append(
-<<<<<<< HEAD
-                InputExample(guid=guid, texts=[text_a, text_b], label=label))
-=======
-                InputExample(guid=guid, texts=[text_a,text_b], label=label))
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
+            examples.append(InputExample(guid=guid, texts=[text_a, text_b], label=label))
         return examples
 
 
@@ -87,17 +76,10 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-<<<<<<< HEAD
     processor = WSCProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}
-=======
-    processor = WSCProcessor(tokenizer, args.data_dir, prefix=prefix)
-    label_list = processor.get_labels()
-    num_labels = len(label_list)
-    id2label = {i:label for i,label in enumerate(label_list)}
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
     args.num_labels = num_labels
     # model
     logger.info("initializing model and config")
@@ -144,11 +126,7 @@ def main():
             model.to(args.device)
             trainer.predict(model, test_dataset=test_dataset, prefix=str(global_step))
             predict_label = trainer.records['preds'].argmax(dim=1).numpy()
-<<<<<<< HEAD
             output_submit_file = os.path.join(args.output_dir, f"{args.task_name}_predict.json")
-=======
-            output_submit_file = os.path.join(args.output_dir, f"{args.task_name}_prediction.json")
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
             # 保存标签结果
             with open(output_submit_file, "w") as writer:
                 for i, pred in enumerate(predict_label):
@@ -157,10 +135,5 @@ def main():
                     json_d['label'] = str(id2label[pred])
                     writer.write(json.dumps(json_d) + '\n')
 
-
-<<<<<<< HEAD
-=======
-
->>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
 if __name__ == "__main__":
     main()
