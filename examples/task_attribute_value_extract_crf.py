@@ -17,8 +17,6 @@ MODEL_CLASSES = {
 
 
 class AttrProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir, encode_mode='pair', prefix=''):
-        super().__init__(tokenizer=tokenizer, encode_mode=encode_mode, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         return ["X", "B-a", "I-a", 'S-a', 'O', "[START]", "[END]"]
@@ -97,7 +95,7 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = AttrProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = AttrProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix, encode_mode='pair')
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}

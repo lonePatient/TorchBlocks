@@ -27,7 +27,7 @@ class SequenceLabelingProcessor(DataProcessor):
                          pad_to_max_length=pad_to_max_length,
                          add_special_tokens=add_special_tokens,
                          truncate_label=truncate_label)
-        self.tokenizer = tokenizer
+
         self.pad_label_id = pad_label_id
         self.special_token_label = special_token_label
 

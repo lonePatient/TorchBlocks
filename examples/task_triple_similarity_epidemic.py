@@ -13,8 +13,6 @@ MODEL_CLASSES = {'bert': (BertConfig, BertForTripletNet, BertTokenizer)}
 
 
 class EpidemicProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, encode_mode='triple', prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -64,7 +62,7 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = EpidemicProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = EpidemicProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix, encode_mode='triple')
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path,

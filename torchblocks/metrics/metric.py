@@ -20,10 +20,6 @@ class Accuracy(Metric):
     '''
     Accuracy
     '''
-
-    def __init__(self):
-        super().__init__()
-
     def update(self, input, target):
         if input.dim() == 1:
             self.preds = input.numpy()
@@ -42,10 +38,6 @@ class MattewsCorrcoef(Metric):
     '''
     Matthews Correlation Coefficient
     '''
-
-    def __init__(self):
-        super().__init__()
-
     def update(self, input, target):
         self.preds = torch.argmax(input, dim=1).numpy()
         self.labels = target.numpy()

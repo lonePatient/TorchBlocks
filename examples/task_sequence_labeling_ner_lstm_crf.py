@@ -40,8 +40,6 @@ def build_vocab(data_dir, vocab_dir):
 
 
 class CluenerProcessor(SequenceLabelingProcessor):
-    def __init__(self, tokenizer, data_dir, prefix=''):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix, add_special_tokens=False)
 
     def get_labels(self):
         """See base class."""
@@ -111,7 +109,7 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = CluenerProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = CluenerProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix,add_special_tokens=False)
     label_list = processor.get_labels()
     num_labels = len(label_list)
     id2label = {i: label for i, label in enumerate(label_list)}

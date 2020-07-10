@@ -18,19 +18,24 @@ def build_argparse(description=None):
                         help="The name of the task to train selected in the list.")
 
     # modelcheckpoint
-    parser.add_argument("--do_save_best", action='store_true', help='Whether to save best model')
-    parser.add_argument("--mcpt_mode", default='min', type=str, help='model checkpoint mode')
+    parser.add_argument("--do_save_best", action='store_true',
+                        help='Whether to save best model')
+    parser.add_argument("--mcpt_mode", default='min', type=str,
+                        help='model checkpoint mode')
     parser.add_argument("--monitor", default='eval_loss', type=str)
 
     # earlystopping
-    parser.add_argument("--patience", default=-1, type=int, help='Interval (number of epochs) between checkpoints')
+    parser.add_argument("--patience", default=-1, type=int,
+                        help='Interval (number of epochs) between checkpoints')
 
     # Exponential Moving Average
-    parser.add_argument('--do_ema', action='store_true', help='Whether to run Exponential Moving Average')
+    parser.add_argument('--do_ema', action='store_true',
+                        help='Whether to run Exponential Moving Average')
     parser.add_argument('--ema_decay', default=0.999, type=float)
 
     # Other parameters
-    parser.add_argument("--gpu", type=str, default='0', help='"0,1,.." or "0" or "" ')
+    parser.add_argument("--gpu", type=str, default='0',
+                        help='"0,1,.." or "0" or "" ')
     parser.add_argument("--config_name", default="", type=str,
                         help="Pretrained config name or path if not the same as model_name")
     parser.add_argument("--tokenizer_name", default="", type=str,
@@ -78,7 +83,8 @@ def build_argparse(description=None):
                         help="Proportion of training to perform linear learning rate warmup for,E.g., 0.1 = 10% of training.")
     parser.add_argument("--logging_steps", type=int, default=50,
                         help="Log every X updates steps.")
-    parser.add_argument("--save_steps", type=int, default=50, help="Save checkpoint every X updates steps.")
+    parser.add_argument("--save_steps", type=int, default=50,
+                        help="Save checkpoint every X updates steps.")
     parser.add_argument("--eval_all_checkpoints", action="store_true",
                         help="Evaluate all checkpoints starting with the same prefix as model_name ending and ending with step number", )
     parser.add_argument("--predict_checkpoints", type=int, default=0,
@@ -87,11 +93,13 @@ def build_argparse(description=None):
                         help="Overwrite the content of the output directory")
     parser.add_argument("--overwrite_cache", action="store_true",
                         help="Overwrite the cached training and evaluation sets")
-    parser.add_argument("--seed", type=int, default=42, help="random seed for initialization")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="random seed for initialization")
     parser.add_argument("--fp16", action="store_true",
                         help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit", )
     parser.add_argument("--fp16_opt_level", type=str, default="O1",
                         help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
                              "See details at https://nvidia.github.io/apex/amp.html", )
-    parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
+    parser.add_argument("--local_rank", type=int, default=-1,
+                        help="For distributed training: local_rank")
     return parser

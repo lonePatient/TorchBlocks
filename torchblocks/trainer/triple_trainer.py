@@ -6,12 +6,9 @@ from ..losses.triplet_loss import DISTANCE2METRIC
 
 
 class TripleTrainer(TrainerBase):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
-        super().__init__(args=args,
-                         metrics=metrics,
-                         logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
+    '''
+    triple 分类
+    '''
 
     def _predict_forward(self, model, data_loader, do_eval, **kwargs):
         self.build_record_object()

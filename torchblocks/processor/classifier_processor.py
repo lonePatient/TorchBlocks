@@ -6,21 +6,9 @@ logger = logging.getLogger(__name__)
 
 
 class TextClassifierProcessor(DataProcessor):
-    def __init__(self, data_dir, tokenizer,
-                 prefix='',
-                 encode_mode='one',
-                 truncate_label=False,
-                 add_special_tokens=True,
-                 pad_to_max_length=True):
-
-        super().__init__(data_dir=data_dir,
-                         prefix=prefix,
-                         tokenizer=tokenizer,
-                         encode_mode=encode_mode,
-                         truncate_label=truncate_label,
-                         add_special_tokens=add_special_tokens,
-                         pad_to_max_length=pad_to_max_length)
-
+    '''
+    文本分类
+    '''
     def convert_to_features(self, examples, label_list, max_seq_length):
         label_map = {label: i for i, label in enumerate(label_list)} if label_list is not None else {}
         features = []

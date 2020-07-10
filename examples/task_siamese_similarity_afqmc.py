@@ -6,16 +6,15 @@ from torchblocks.callback import TrainLogger
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
-from transformers import BertConfig, BertTokenizer,WEIGHTS_NAME
+from transformers import BertConfig, BertTokenizer, WEIGHTS_NAME
 from torchblocks.models.nn import BertForSiameseModel
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSiameseModel, BertTokenizer)
 }
 
+
 class AfqmcProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, encode_mode='pair', prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -61,30 +60,30 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = AfqmcProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = AfqmcProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix, encode_mode='pair')
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels
     # model
     logger.info("initializing model and config")
-    config = config_class.from_pretrained(args.model_path,num_labels=num_labels,
+    config = config_class.from_pretrained(args.model_path, num_labels=num_labels,
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
     # trainer
     logger.info("initializing traniner")
-    trainer = TextClassifierTrainer(logger=logger,args=args, collate_fn=processor.collate_fn,
+    trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
                                     batch_input_keys=processor.get_batch_keys(),
                                     metrics=[Accuracy()])
     # do train
     if args.do_train:
-        train_dataset = processor.create_dataset(args.train_max_seq_length,'train.json','train')
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length,'dev.json','dev')
+        train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.json', 'train')
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.json', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
     # do eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length,'dev.json','dev')
+        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.json', 'dev')
         checkpoints = [args.output_dir]
         if args.eval_all_checkpoints or args.checkpoint_number > 0:
             checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
@@ -101,7 +100,7 @@ def main():
         dict_to_text(output_eval_file, results)
     # do predict
     if args.do_predict:
-        test_dataset = processor.create_dataset(args.eval_max_seq_length,'test.json','test')
+        test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.json', 'test')
         if args.checkpoint_number == 0:
             raise ValueError("checkpoint number should > 0,but get %d", args.checkpoint_number)
         checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)

@@ -16,8 +16,6 @@ MODEL_CLASSES = {
 
 
 class ToxicProcessor(TextClassifierProcessor):
-    def __init__(self, tokenizer, data_dir, prefix):
-        super().__init__(tokenizer=tokenizer, data_dir=data_dir, prefix=prefix)
 
     def get_labels(self):
         """See base class."""
@@ -58,7 +56,7 @@ def main():
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ToxicProcessor(tokenizer, args.data_dir, prefix=prefix)
+    processor = ToxicProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix)
     label_list = processor.get_labels()
     id2label = {i: key for i, key in enumerate(label_list)}
     num_labels = len(label_list)

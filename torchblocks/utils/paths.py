@@ -10,10 +10,12 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
+
 def check_dir(d):
     if not os.path.exists(d):
         print("Directory {} does not exist. Exit.".format(d))
         exit(1)
+
 
 def check_files(files):
     for f in files:
@@ -21,11 +23,13 @@ def check_files(files):
             print("File {} does not exist. Exit.".format(f))
             exit(1)
 
+
 def ensure_dir(d, verbose=True):
     if not os.path.exists(d):
         if verbose:
             print("Directory {} do not exist; creating...".format(d))
         os.makedirs(d)
+
 
 def get_checkpoints(output_dir, checkpoint_number, weight_name):
     '''
@@ -153,7 +157,7 @@ def save_model(model, model_path):
     torch.save(state_dict, model_path)
 
 
-def load_model(model, model_path,key='state_dict'):
+def load_model(model, model_path, key='state_dict'):
     '''
     加载模型
     :param model:

@@ -4,8 +4,7 @@ from argparse import Namespace
 
 from torch.utils.data.dataloader import DataLoader, default_collate
 from torch.utils.data.distributed import DistributedSampler
-from torch.utils.data.sampler import RandomSampler
-from torch.utils.data import SequentialSampler
+from torch.utils.data.sampler import RandomSampler, SequentialSampler
 from torch.utils.tensorboard import SummaryWriter
 
 from ..optim import AdamW
@@ -13,8 +12,7 @@ from ..optim.lr_scheduler import get_linear_schedule_with_warmup
 
 from ..utils.paths import save_pickle, json_to_text
 from ..utils.tools import seed_everything, AverageMeter, to_json_string
-from ..callback import ModelCheckpoint, EarlyStopping
-from ..callback import ProgressBar, TrainLogger, EMA
+from ..callback import ModelCheckpoint, EarlyStopping, ProgressBar, TrainLogger, EMA
 
 try:
     from apex import amp
@@ -37,7 +35,7 @@ class TrainerBase:
                  prefix=None,
                  collate_fn=None,
                  scheduler_on_batch=True,
-                 **kwargs):
+                 **kwargs):  # 增加新参数
 
         self.args = args
         self.metrics = metrics
@@ -67,8 +65,8 @@ class TrainerBase:
             )
 
         # tensorboard
-        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir, 'tb_logs'))
-        self.tb_writer.add_text("args", to_json_string(self.args.__dict__))
+        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir, self.prefix + '_tb_logs'))
+        self.tb_writer.add_text("trainArgs", to_json_string(self.args.__dict__))
 
         # checkpoint
         self.model_checkpoint = ModelCheckpoint(
@@ -239,9 +237,10 @@ class TrainerBase:
                     if self.args.do_ema:
                         ema.apply_shadow(model)
                     self.tb_writer.add_scalar('train_epoch_loss', self.records['loss_meter'].avg,
-                                              self.global_step / self.args.logging_steps)
+                                              int(self.global_step / self.args.logging_steps))
                     # self.logger.add_value(value=self.records['loss_meter'].avg, step=self.global_step,
                     #                       name='train_loss')
+                    print(" ")
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
@@ -338,7 +337,7 @@ class TrainerBase:
             model = torch.nn.parallel.DistributedDataParallel(
                 model, device_ids=[self.args.local_rank],
                 output_device=self.args.local_rank,
-                find_unused_parameters=True,
+                find_unused_parameters=True
             )
         return model, optimizer
 
@@ -356,6 +355,7 @@ class TrainerBase:
         '''
         打印evaluation结果
         '''
+        print(' ')
         if len(self.records['result']) == 0:
             self.logger.warning("eval record is empty")
         self.logger.info("\n***** Eval results of %s *****", self.args.task_name)

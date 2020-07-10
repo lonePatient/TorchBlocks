@@ -11,13 +11,6 @@ class SequenceLabelingTrainer(TrainerBase):
     Sequence Labeling crf or softmax Trainer
     '''
 
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
-        super().__init__(args=args,
-                         metrics=metrics,
-                         logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
-
     def evaluate(self, model, eval_dataset, save_preds=False, prefix=''):
         eval_dataloader = self.build_eval_dataloader(eval_dataset)
         self._predict_forward(model, eval_dataloader, do_eval=True)
@@ -101,13 +94,6 @@ class SequenceLabelingSpanTrainer(TrainerBase):
     Sequence Labeling Span Trainer
     '''
 
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
-        super().__init__(args=args,
-                         metrics=metrics,
-                         logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
-
     def extract_items(self, start_, end_, length):
         items = []
         start_ = start_[:length][1:-1]  # 实际长度
@@ -144,7 +130,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
         if save_preds:
             output_logits_file = f"{self.prefix + prefix}_predict_eval_logits.pkl"
-            self.save_predict_result(output_logits_file,self.records['preds'])
+            self.save_predict_result(output_logits_file, self.records['preds'])
         self.print_evaluate_result()
         self.print_label_result(entity_value)
         if 'cuda' in str(self.args.device):
@@ -164,9 +150,9 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             json_d['entities'] = entity_spans
             results.append(json_d)
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
-        self.save_predict_result(output_predict_file,results)
+        self.save_predict_result(output_predict_file, results)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
-        self.save_predict_result(output_logits_file,self.records['preds'])
+        self.save_predict_result(output_logits_file, self.records['preds'])
         return results
 
     def _predict_forward(self, model, data_loader, do_eval=True, **kwargs):
@@ -184,8 +170,13 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                 end_positions = tensor_to_list(inputs['end_positions'])
                 self.records['target'].extend(zip(start_positions, end_positions))
             else:
+<<<<<<< HEAD
+                if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
+                    _, start_logits, end_logits = outputs[:3]
+=======
                 if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
                     _,start_logits, end_logits = outputs[:3]
+>>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
                 else:
                     start_logits, end_logits = outputs[:2]
             start_logits = tensor_to_list(torch.argmax(start_logits, -1))

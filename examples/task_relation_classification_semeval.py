@@ -19,10 +19,6 @@ Enriching Pre-trained Language Model with Entity Information for Relation Classi
 
 
 class SemEvalProcessor(DataProcessor):
-    def __init__(self, tokenizer, data_dir, prefix, label_path, add_sep_token=False):
-        super().__init__(data_dir=data_dir, prefix=prefix, tokenizer=tokenizer)
-        self.label_path = label_path
-        self.add_sep_token = add_sep_token
 
     def get_labels(self):
         """See base class."""
@@ -131,7 +127,7 @@ def main():
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
     tokenizer.add_special_tokens({"additional_special_tokens": ["<e1>", "</e1>", "<e2>", "</e2>"]})
-    processor = SemEvalProcessor(tokenizer, args.data_dir, prefix=prefix,
+    processor = SemEvalProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix, add_sep_token=False,
                                  label_path=os.path.join(args.data_dir, args.label_file))
     label_list = processor.get_labels()
     num_labels = len(label_list)

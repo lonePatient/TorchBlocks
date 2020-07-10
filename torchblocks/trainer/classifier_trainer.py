@@ -5,13 +5,9 @@ from ..utils.tensor import tensor_to_cpu
 
 
 class TextClassifierTrainer(TrainerBase):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
-        super().__init__(args=args,
-                         metrics=metrics,
-                         logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
-
+    '''
+    文本分类
+    '''
     def _predict_forward(self, model, data_loader, do_eval, **kwargs):
         self.build_record_object()
         pbar = ProgressBar(n_total=len(data_loader), desc='Evaluating' if do_eval else 'Predicting')
@@ -28,7 +24,11 @@ class TextClassifierTrainer(TrainerBase):
                 self.records['target'].append(tensor_to_cpu(labels))
                 self.records['loss_meter'].update(loss.item(), n=1)
             else:
+<<<<<<< HEAD
+                if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
+=======
                 if outputs[0].dim() ==1 and outputs[0].size(0) == 1:
+>>>>>>> 4ce80a4deb131d1d6d23c5101cf57d45f3910da4
                     logits = outputs[1]
                 else:
                     logits = outputs[0]
