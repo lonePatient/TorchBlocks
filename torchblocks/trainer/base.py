@@ -66,7 +66,7 @@ class TrainerBase:
 
         # tensorboard
         self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir, self.prefix + '_tb_logs'))
-        self.tb_writer.add_text("trainArgs", to_json_string(self.args.__dict__))
+        self.tb_writer.add_text("TrainArgs", to_json_string(self.args.__dict__))
 
         # checkpoint
         self.model_checkpoint = ModelCheckpoint(
@@ -198,10 +198,8 @@ class TrainerBase:
         model.zero_grad()  # Reset gradients to zero
         self.global_step += 1
         self.records['loss_meter'].update(loss, n=1)
-        self.tb_writer.add_scalar('loss', loss, self.global_step)
-        self.tb_writer.add_scalar('learning_rate', scheduler.get_lr()[0], self.global_step)
-        # self.logger.add_value(value=loss, step=self.global_step, name='loss')
-        # self.logger.add_value(value=scheduler.get_lr()[0], step=self.global_step, name="learning_rate")
+        self.tb_writer.add_scalar('Loss/train_step_loss', loss, self.global_step)
+        self.tb_writer.add_scalar('LearningRate/train_lr', scheduler.get_lr()[0], self.global_step)
 
     def train(self, model, train_dataset, eval_dataset):
         """
@@ -212,7 +210,7 @@ class TrainerBase:
         optimizer = self.build_optimizers(model)
         scheduler = self.build_scheduler(optimizer, t_total)
         optimizer, scheduler = self.restore_optimizer(optimizer, scheduler)
-        model, optimizer = self.prepare_for_training(model, optimizer)
+        model, optimizer = self.build_apex_and_distribute(model, optimizer)
         # Train!
         self.print_training_parameters(model, len(train_dataset), t_total)
         model.zero_grad()
@@ -236,17 +234,12 @@ class TrainerBase:
                 ):
                     if self.args.do_ema:
                         ema.apply_shadow(model)
-                    self.tb_writer.add_scalar('train_epoch_loss', self.records['loss_meter'].avg,
+                    self.tb_writer.add_scalar('Loss/train_epoch_loss', self.records['loss_meter'].avg,
                                               int(self.global_step / self.args.logging_steps))
-                    # self.logger.add_value(value=self.records['loss_meter'].avg, step=self.global_step,
-                    #                       name='train_loss')
                     print(" ")
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
-                    # log save and plot
-                    # self.logger.save()
-                    # save model
                 if (self.args.local_rank in [-1, 0]
                         and self.args.save_steps > 0
                         and self.global_step % self.args.save_steps == 0
@@ -324,7 +317,7 @@ class TrainerBase:
         self.logger.info("  Total Number of Trainable Parameters: %d " %
                          sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-    def prepare_for_training(self, model, optimizer):
+    def build_apex_and_distribute(self, model, optimizer):
         if self.args.fp16:
             if not is_apex_available():
                 raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
@@ -358,12 +351,13 @@ class TrainerBase:
         print(' ')
         if len(self.records['result']) == 0:
             self.logger.warning("eval record is empty")
-        self.logger.info("***** Eval results of %s *****", self.args.task_name)
+        self.logger.info("***** Evaluating results of %s *****", self.args.task_name)
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(self.records['result'][key]))
-            self.tb_writer.add_scalar(key, self.records['result'][key], self.global_step / self.args.logging_steps)
-            # self.logger.add_value(value=self.records['result'][key], step=self.global_step, name=key)
+            name = key.split("_")[1] if "_" in key else key
+            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}", self.records['result'][key],
+                                      self.global_step / self.args.logging_steps)
 
     def save_predict_result(self, file_name, data, file_dir=None):
         '''
@@ -395,7 +389,7 @@ class TrainerBase:
                     elif isinstance(value, dict):
                         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
                     else:
-                        raise ValueError("value type: expected one of (float, dict)")
+                        raise ValueError("metric value type: expected one of (float, dict)")
                 else:
                     self.logger.info(f"{metric.name()} value is None")
         if save_preds:

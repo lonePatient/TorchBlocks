@@ -116,6 +116,8 @@ class DataProcessor:
         num_inputs = len(batch)
         has_label = num_inputs == len(self.get_batch_keys())
         for i in range(num_inputs):  # test时一般label为None，所以导致keys_num!=input_keys_num
+            if batch[i].dim()==1:
+                continue
             if i == num_inputs - 1:
                 if self.truncate_label and has_label:
                     batch[i] = batch[i][:, :max_seq_len]

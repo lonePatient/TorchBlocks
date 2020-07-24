@@ -39,7 +39,7 @@ class SequenceLabelingTrainer(TrainerBase):
             torch.cuda.empty_cache()
 
     def print_label_result(self, entity_value):
-        self.logger.info("***** Eval label results of %s *****", self.args.task_name)
+        self.logger.info("***** Evaluating label results of %s *****", self.args.task_name)
         for key in sorted(entity_value.keys()):
             self.logger.info(f" {key} result: ")
             info = "-".join([f' {key}: {value:.4f} ' for key, value in entity_value[key].items()])
@@ -108,7 +108,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
         return items
 
     def print_label_result(self, entity_value):
-        self.logger.info("***** Eval label results of %s *****", self.args.task_name)
+        self.logger.info("***** Evaluating label results of %s *****", self.args.task_name)
         for key in sorted(entity_value.keys()):
             self.logger.info(f" {key} result: ")
             info = "-".join([f' {key}: {value:.4f} ' for key, value in entity_value[key].items()])

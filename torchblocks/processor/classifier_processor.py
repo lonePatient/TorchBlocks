@@ -29,8 +29,7 @@ class TextClassifierProcessor(DataProcessor):
                         label_ids[i] = int(lb)
                     else:
                         raise ValueError("multi label type: expected one of (str,float,int)")
-            else:
-                label_ids = example.label_ids
+                inputs['label_ids'] = label_ids
             if example.label is not None:
                 if isinstance(example.label, (float, int)):
                     label = int(example.label)
@@ -38,10 +37,7 @@ class TextClassifierProcessor(DataProcessor):
                     label = label_map[example.label]
                 else:
                     raise ValueError("label type: expected one of (str,float,int)")
-            else:
-                label = example.label
-            inputs['label'] = label
-            inputs['label_ids'] = label_ids
+                inputs['label'] = label
             if ex_index < 5:
                 self.print_examples(**inputs)
             features.append(InputFeatures(**inputs))
