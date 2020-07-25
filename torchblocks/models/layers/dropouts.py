@@ -26,6 +26,6 @@ class MultiSampleDropout(nn.Module):
         self.classifier = nn.Linear(hidden_size, num_labels)
 
     def forward(self, input):
-        logits = torch.stack([self.classifier(self.high_dropout(input)) for _ in range(self.K)], dim=0)
+        logits = torch.stack([self.classifier(self.dropout(input)) for _ in range(self.K)], dim=0)
         logits = torch.mean(logits, dim=0)
         return logits
