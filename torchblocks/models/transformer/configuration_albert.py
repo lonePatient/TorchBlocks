@@ -17,7 +17,6 @@
 
 from transformers import PretrainedConfig
 
-
 ALBERT_PRETRAINED_CONFIG_ARCHIVE_MAP = {}
 
 class AlbertConfig(PretrainedConfig):

@@ -7,10 +7,10 @@ export TASK_NAME=cola
 python task_text_classification_lookahead_cola.py \
   --model_type=bert \
   --model_path=$MODEL_DIR \
+  --model_name=bert-base-lah \
   --task_name=$TASK_NAME \
   --do_train \
-  --do_lower_case \
-  --gpu=0 \
+  --gpu=1 \
   --monitor=eval_mcc \
   --data_dir=$DATA_DIR/${TASK_NAME}/ \
   --train_max_seq_length=128 \

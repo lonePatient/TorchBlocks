@@ -6,7 +6,6 @@ def load_word2vec(filename, vocab, word_vecs):
     containing the number of vectors and their dimensionality (two integers),
     followed with number-of-vectors lines each of which is formatted as
     ``<word-string> <embedding-vector>``.
-
     Args:
         filename (str): Path to the embedding file.
         vocab (dict): A dictionary that maps token strings to integer index.
@@ -52,7 +51,6 @@ def load_glove(filename, vocab, word_vecs):
             Tokens not in :attr:`vocab` are not read.
         word_vecs: A 2D numpy array of shape `[vocab_size, embed_dim]`
             which is updated as reading from the file.
-
     Returns:
         The updated :attr:`word_vecs`.
     """

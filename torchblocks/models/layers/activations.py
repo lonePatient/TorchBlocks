@@ -77,5 +77,5 @@ class Mish(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, X):
-        return X * torch.tanh(F.softplus(X))
+    def forward(self, x):
+        return x * torch.tanh(F.softplus(x))

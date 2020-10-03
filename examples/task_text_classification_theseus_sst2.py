@@ -17,7 +17,6 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
-
 class Sst2Processor(TextClassifierProcessor):
 
     def get_labels(self):

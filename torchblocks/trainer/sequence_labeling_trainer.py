@@ -10,7 +10,6 @@ class SequenceLabelingTrainer(TrainerBase):
     '''
     Sequence Labeling crf or softmax Trainer
     '''
-
     def evaluate(self, model, eval_dataset, save_preds=False, prefix=''):
         eval_dataloader = self.build_eval_dataloader(eval_dataset)
         self._predict_forward(model, eval_dataloader, do_eval=True)
@@ -26,7 +25,7 @@ class SequenceLabelingTrainer(TrainerBase):
                 else:
                     temp_1.append(self.records['target'][i][j])
                     temp_2.append(self.records['preds'][i][j])
-        self.logger.info("   ")
+
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
@@ -42,7 +41,7 @@ class SequenceLabelingTrainer(TrainerBase):
         self.logger.info("***** Evaluating label results of %s *****", self.args.task_name)
         for key in sorted(entity_value.keys()):
             self.logger.info(f" {key} result: ")
-            info = "-".join([f' {key}: {value:.4f} ' for key, value in entity_value[key].items()])
+            info = "-".join([f' {key}: {value:.5f} ' for key, value in entity_value[key].items()])
             self.logger.info(info)
 
     def predict(self, model, test_dataset, prefix=''):
@@ -93,10 +92,9 @@ class SequenceLabelingSpanTrainer(TrainerBase):
     '''
     Sequence Labeling Span Trainer
     '''
-
     def extract_items(self, start_, end_, length):
         items = []
-        start_ = start_[:length][1:-1]  # 实际长度
+        start_ = start_[:length][1:-1]  # 实际长度，[CLS]XXXX[SEP]
         end_ = end_[:length][1:-1]
         for i, s_l in enumerate(start_):
             if s_l == 0:
@@ -111,7 +109,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
         self.logger.info("***** Evaluating label results of %s *****", self.args.task_name)
         for key in sorted(entity_value.keys()):
             self.logger.info(f" {key} result: ")
-            info = "-".join([f' {key}: {value:.4f} ' for key, value in entity_value[key].items()])
+            info = "-".join([f' {key}: {value:.5f} ' for key, value in entity_value[key].items()])
             self.logger.info(info)
 
     def evaluate(self, model, eval_dataset, save_preds=False, prefix=''):
@@ -124,7 +122,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             R = self.extract_items(start_logits, end_logits, length)
             T = self.extract_items(start_positions, end_positions, length)
             self.metrics[0].update(input=R, target=T)
-        self.logger.info("   ")
+
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
@@ -149,6 +147,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             json_d['id'] = i
             json_d['entities'] = entity_spans
             results.append(json_d)
+
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
         self.save_predict_result(output_predict_file, results)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
@@ -165,15 +164,16 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                 outputs = model(**inputs)
             if do_eval:
                 loss, start_logits, end_logits = outputs[:3]
-                self.records['loss_meter'].update(loss.mean().item(), n=1)
                 start_positions = tensor_to_list(inputs['start_positions'])
                 end_positions = tensor_to_list(inputs['end_positions'])
+                self.records['loss_meter'].update(loss.mean().item(), n=1)
                 self.records['target'].extend(zip(start_positions, end_positions))
             else:
                 if outputs[0].dim() == 1 and outputs[0].size(0) == 1:
                     _, start_logits, end_logits = outputs[:3]
                 else:
                     start_logits, end_logits = outputs[:2]
+
             start_logits = tensor_to_list(torch.argmax(start_logits, -1))
             end_logits = tensor_to_list(torch.argmax(end_logits, -1))
             self.records['preds'].extend(zip(start_logits, end_logits))

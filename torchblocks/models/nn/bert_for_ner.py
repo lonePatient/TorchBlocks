@@ -77,8 +77,7 @@ class BertSpanForNer(BertPreTrainedModel):
         self.end_fc = PoolerEndLogits(config.hidden_size + self.num_labels, self.num_labels)
         self.init_weights()
 
-    def forward(self,
-                input_ids,
+    def forward(self, input_ids,
                 token_type_ids=None,
                 attention_mask=None,
                 start_positions=None,
@@ -99,7 +98,8 @@ class BertSpanForNer(BertPreTrainedModel):
         outputs = (start_logits, end_logits,) + outputs[2:]
         if start_positions is not None and end_positions is not None:
             loss_fct = SpanLoss()
-            loss = loss_fct(input=(start_logits, end_logits), target=(start_positions, end_positions),
+            loss = loss_fct(input=(start_logits, end_logits),
+                            target=(start_positions, end_positions),
                             masks=attention_mask)
             outputs = (loss,) + outputs
         return outputs

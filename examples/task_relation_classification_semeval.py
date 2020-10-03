@@ -108,12 +108,14 @@ class SemEvalProcessor(DataProcessor):
 def main():
     parser = build_argparse()
     parser.add_argument('--label_file', type=str, default='label.txt')
-    # output dir
     args = parser.parse_args()
+
+    # output dir
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
     args.output_dir = args.output_dir + '{}'.format(args.model_name)
     os.makedirs(args.output_dir, exist_ok=True)
+
     # logging
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
@@ -123,6 +125,7 @@ def main():
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -132,12 +135,14 @@ def main():
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels
+
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path, num_labels=num_labels,
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
     # Trainer
     logger.info("initializing traniner")
     trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,

@@ -117,21 +117,27 @@ class PGD(object):
 class FreeLB(object):
     '''
     https://arxiv.org/pdf/1909.11764.pdf
+    ExampleL:目前只对bert进行
+    freelb = FreeLB()
+    K = 3
+    for batch_input, batch_label in processor:
+        loss = freelb.attack(model,inputs,.....)
     '''
 
-    def __init__(self, adv_K, adv_lr, adv_init_mag, adv_max_norm=0., adv_norm_type='l2'):
+    def __init__(self, adv_K, adv_lr, adv_init_mag, adv_max_norm=0., adv_norm_type='l2', base_model='bert'):
         self.adv_K = adv_K
         self.adv_lr = adv_lr
         self.adv_max_norm = adv_max_norm
         self.adv_init_mag = adv_init_mag
         self.adv_norm_type = adv_norm_type
+        self.base_model = base_model
 
     def attack(self, model, inputs, gradient_accumulation_steps=1):
         input_ids = inputs['input_ids']
         if isinstance(model, torch.nn.DataParallel):
-            embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
+            embeds_init = getattr(model.module, self.base_model).embeddings.word_embeddings(input_ids)
         else:
-            embeds_init = model.bert.embeddings.word_embeddings(input_ids)
+            embeds_init = getattr(model, self.base_model).embeddings.word_embeddings(input_ids)
         if self.adv_init_mag > 0:
             input_mask = inputs['attention_mask'].to(embeds_init)
             input_lengths = torch.sum(input_mask, 1)
@@ -141,10 +147,11 @@ class FreeLB(object):
                 mag = self.adv_init_mag / torch.sqrt(dims)
                 delta = (delta * mag.view(-1, 1, 1)).detach()
             elif self.adv_norm_type == "linf":
-                delta = torch.zeros_like(embeds_init).uniform_(-self.adv_init_mag,
-                                                               self.adv_init_mag) * input_mask.unsqueeze(2)
+                delta = torch.zeros_like(embeds_init).uniform_(-self.adv_init_mag, self.adv_init_mag)
+                delta = delta * input_mask.unsqueeze(2)
         else:
             delta = torch.zeros_like(embeds_init)
+
         for astep in range(self.adv_K):
             delta.requires_grad_()
             inputs['inputs_embeds'] = delta + embeds_init
@@ -152,8 +159,7 @@ class FreeLB(object):
             outputs = model(**inputs)
             loss, logits = outputs[:2]  # model outputs are always tuple in transformers (see doc)
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            if gradient_accumulation_steps > 1:
-                loss = loss / gradient_accumulation_steps
+            loss = loss / gradient_accumulation_steps
             loss.backward()
             delta_grad = delta.grad.clone().detach()
             if self.adv_norm_type == "l2":
@@ -174,9 +180,9 @@ class FreeLB(object):
             else:
                 raise ValueError("Norm type {} not specified.".format(self.adv_norm_type))
             if isinstance(model, torch.nn.DataParallel):
-                embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
+                embeds_init = getattr(model.module, self.base_model).embeddings.word_embeddings(input_ids)
             else:
-                embeds_init = model.bert.embeddings.word_embeddings(input_ids)
+                embeds_init = getattr(model, self.base_model).embeddings.word_embeddings(input_ids)
         return loss
 
 
@@ -185,7 +191,8 @@ class ALUM(object):
     Adversarial Training for Large Neural Language Models
     '''
 
-    def __init__(self, adv_lr, adv_K, adv_var=1e-5, adv_alpha=1.0, adv_gamma=1e-6, adv_norm_type='inf'):
+    def __init__(self, adv_lr, adv_K, adv_var=1e-5, adv_alpha=1.0, adv_gamma=1e-6, adv_norm_type='inf',
+                 base_model='bert'):
         self.adv_var = adv_var
         self.adv_K = adv_K
         self.adv_lr = adv_lr
@@ -193,6 +200,7 @@ class ALUM(object):
         self.adv_alpha = adv_alpha
         self.adv_norm_type = adv_norm_type
         self.kl = KL()
+        self.base_model = base_model
 
     def adv_project(self, grad, eps=1e-6):
         if self.adv_norm_type == 'l2':
@@ -208,11 +216,12 @@ class ALUM(object):
         outputs = model(**inputs)
         loss, logits = outputs[:2]
         if isinstance(model, torch.nn.DataParallel):
-            embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
+            embeds_init = getattr(model.module, self.base_model).embeddings.word_embeddings(input_ids)
         else:
-            embeds_init = model.bert.embeddings.word_embeddings(input_ids)
+            embeds_init = getattr(model, self.base_model).embeddings.word_embeddings(input_ids)
         input_mask = inputs['attention_mask'].to(embeds_init)
         delta = torch.zeros_like(embeds_init).normal_(0, 1) * self.adv_var * input_mask.unsqueeze(2)
+
         for astep in range(self.adv_K):
             delta.requires_grad_()
             inputs['inputs_embeds'] = delta + embeds_init
@@ -231,11 +240,10 @@ class ALUM(object):
             adv_loss = (adv_loss_f + adv_loss_b) * self.adv_alpha
             loss = loss + adv_loss
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            if gradient_accumulation_steps > 1:
-                loss = loss / gradient_accumulation_steps
+            loss = loss / gradient_accumulation_steps
             loss.backward()
             if isinstance(model, torch.nn.DataParallel):
-                embeds_init = model.module.bert.embeddings.word_embeddings(input_ids)
+                embeds_init = getattr(model.module, self.base_model).embeddings.word_embeddings(input_ids)
             else:
-                embeds_init = model.bert.embeddings.word_embeddings(input_ids)
+                embeds_init = getattr(model, self.base_model).embeddings.word_embeddings(input_ids)
         return loss

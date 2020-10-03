@@ -9,7 +9,6 @@ class InputExample:
         label: 标签信息,
         label_ids: 标签列表，比如多标签，NER等任务
     """
-
     def __init__(self,
                  guid,
                  texts,

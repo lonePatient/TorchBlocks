@@ -14,14 +14,14 @@ class LSTMCRF(TrainModel):
                               hidden_size=config.hidden_size,
                               num_layers=config.num_hidden_layers,
                               dropout=config.lstm_dropout_prob,
-                              batch_first=True,bidirectional=True)
+                              batch_first=True,
+                              bidirectional=True)
         self.dropout = SpatialDropout(config.hidden_dropout_prob)
         self.layer_norm = LayerNorm(config.hidden_size * 2)
         self.classifier = nn.Linear(config.hidden_size * 2, config.num_labels)
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
-    def forward(self,
-                input_ids,
+    def forward(self, input_ids,
                 token_type_ids=None,
                 attention_mask=None,
                 labels=None):

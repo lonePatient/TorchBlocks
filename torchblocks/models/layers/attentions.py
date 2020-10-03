@@ -25,15 +25,12 @@ class MultiHeadAttention(nn.Module):
         return x.permute(0, 2, 1, 3)
 
     def forward(self,q,k,v,mask = None):
-
         q_layer = self.query(q)
         k_layer = self.key(k)
         v_layer = self.value(v)
-
         query_layer = self.transpose_for_scores(q_layer)
         key_layer = self.transpose_for_scores(k_layer)
         value_layer = self.transpose_for_scores(v_layer)
-
         # Take the dot product between "query" and "key" to get the raw attention scores.
         attention_scores = torch.matmul(query_layer, key_layer.transpose(-1, -2))
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
@@ -55,41 +52,19 @@ class MultiHeadAttention(nn.Module):
         outputs = (context_layer,)
         return outputs
 
-class Attention(nn.Module):
-
-    def __init__(self, feature_dim, maxlen=70):
-        super().__init__()
-        self.attention_fc = nn.Linear(feature_dim, 1)
-        self.bias = nn.Parameter(torch.zeros(1, maxlen, 1, requires_grad=True))
-
-    def forward(self, rnn_output):
-        """
-        forward attention scores and attended vectors
-        :param rnn_output: (#batch, #seq_len, #feature)
-        :return: attended_outputs (#batch, #feature)
-        """
-        attention_weights = self.attention_fc(rnn_output)
-        seq_len = rnn_output.size(1)
-        attention_weights = self.bias[:, :seq_len, :] + attention_weights
-        attention_weights = torch.tanh(attention_weights)
-        attention_weights = torch.exp(attention_weights)
-        attention_weights_sum = torch.sum(attention_weights, dim=1, keepdim=True) + 1e-7
-        attention_weights = attention_weights / attention_weights_sum
-        attended = torch.sum(attention_weights * rnn_output, dim=1)
-        return attended
-
 class CosAttention(nn.Module):
     def __init__(self):
         super(CosAttention,self).__init__()
 
-    def forward(self, title_output, attr_output):
+    def forward(self, q,k,v):
         '''
-        title_output (batchsize, seqlen, hidden_dim)
-        attr_output (batchsize, hidden_dim)
+        q: (batchsize, hidden_dim)
+        k: (batchsize, seqlen, hidden_dim)
+        v: (batchsize, seqlen, hidden_dim)
         '''
-        seq_len = title_output.size()[1]
-        attr_output = attr_output.unsqueeze(1).repeat(1,seq_len,1)
-        cos_sim = torch.cosine_similarity(attr_output,title_output,-1)
+        seq_len = k.size()[1]
+        q_output = q.unsqueeze(1).repeat(1,seq_len,1)
+        cos_sim = torch.cosine_similarity(q_output,k,-1)
         cos_sim = cos_sim.unsqueeze(-1)
-        outputs = title_output*cos_sim
+        outputs = v*cos_sim
         return outputs

@@ -8,7 +8,6 @@ class EarlyStopping(object):
     '''
     Stop training when a monitored quantity has stopped improving.
     '''
-
     def __init__(self,
                  min_delta=0,
                  patience=10,  # Interval (number of epochs) between checkpoints

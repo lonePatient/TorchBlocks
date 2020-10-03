@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 class FeedForwardNetwork(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, dropout_rate=0):
         super(FeedForwardNetwork, self).__init__()
@@ -14,7 +13,6 @@ class FeedForwardNetwork(nn.Module):
         x_proj = F.dropout(F.relu(self.linear1(x)), p=self.dropout_rate, training=self.training)
         x_proj = self.linear2(x_proj)
         return x_proj
-
 
 class PoolerStartLogits(nn.Module):
     def __init__(self, hidden_size, num_classes):
@@ -29,7 +27,6 @@ class PoolerStartLogits(nn.Module):
             else:
                 x = x * (1 - p_mask) - 1e30 * p_mask
         return x
-
 
 class PoolerEndLogits(nn.Module):
     def __init__(self, hidden_size, num_classes):

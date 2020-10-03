@@ -22,7 +22,6 @@ class AttrProcessor(SequenceLabelingProcessor):
         return ["X", "B-a", "I-a", 'S-a', 'O', "[START]", "[END]"]
 
     def collate_fn(self, batch):
-
         """
         batch should be a list of (input_ids, attention_mask, *,*,*, labels) tuples...
         Returns a padded tensor of sequences sorted from longest to shortest,
@@ -78,11 +77,13 @@ def main():
     parser.add_argument('--markup', type=str, default='bios', choices=['bios', 'bio'])
     parser.add_argument('--max_attr_length', default=16, type=int)
     args = parser.parse_args()
+
     # output dir
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
     args.output_dir = args.output_dir + '{}'.format(args.model_name)
     os.makedirs(args.output_dir, exist_ok=True)
+
     # logging
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
@@ -92,6 +93,7 @@ def main():
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -101,6 +103,7 @@ def main():
     id2label = {i: label for i, label in enumerate(label_list)}
     args.id2label = id2label
     args.num_labels = num_labels
+
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path, num_labels=num_labels,

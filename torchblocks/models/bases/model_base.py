@@ -18,7 +18,6 @@ INIT2FCT = {'xavier_uniform': init.xavier_uniform_,
             'uniform': init.uniform_
             }
 
-
 class TrainModel(nn.Module):
     def __init__(self, config, *inputs, **kwargs):
         super().__init__()

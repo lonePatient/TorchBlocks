@@ -14,9 +14,7 @@ rm MSRParaphraseCorpus.msi
 
 import os
 import sys
-import shutil
 import argparse
-import tempfile
 import urllib
 import io
 if sys.version_info >= (3, 0):

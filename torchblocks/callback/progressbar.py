@@ -4,7 +4,7 @@ class ProgressBar(object):
     '''
     custom progress bar
     Example:
-        >>> pbar = ProgressBar(n_total=30,desc='training')
+        >>> pbar = ProgressBar(n_total=30,desc='Training')
         >>> step = 2
         >>> pbar(step=step,info={'loss':20})
     '''
@@ -55,3 +55,5 @@ class ProgressBar(object):
                         "-".join([f' {key}: {value:.4f} ' for key, value in info.items()])
         sys.stdout.write(show_bar)
         sys.stdout.flush()
+        if current == self.n_total:
+            print(" ")

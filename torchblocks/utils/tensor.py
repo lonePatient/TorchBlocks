@@ -67,6 +67,7 @@ def length_to_mask(length, max_len=None, dtype=None):
 
 
 def pad_sequence(sequences, batch_first=True, pad_value=0):
+
     def length(sequence):
         if isinstance(sequence, torch.Tensor):
             return sequence.size(0)

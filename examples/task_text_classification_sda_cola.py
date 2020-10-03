@@ -14,10 +14,10 @@ from transformers import BertForSequenceClassification, BertConfig, BertTokenize
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
+
 '''
 Improving BERT Fine-Tuning via Self-Ensemble and Self-Distillation
 '''
-
 
 class ColaProcessor(TextClassifierProcessor):
 
@@ -65,10 +65,8 @@ class SDATrainer(TextClassifierTrainer):
             kd_logits = outputs[1]
         kd_loss = self.kd_loss_fct(logits, kd_logits)
         loss += self.args.kd_coeff * kd_loss
-        if self.args.n_gpu > 1:
-            loss = loss.mean()  # mean() to average on multi-gpu parallel training
-        if self.args.gradient_accumulation_steps > 1:
-            loss = loss / self.args.gradient_accumulation_steps
+        loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        loss = loss / self.args.gradient_accumulation_steps
         loss.backward()
         return loss.item()
 
@@ -134,6 +132,7 @@ def main():
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.tsv', 'train')
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
+
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
@@ -151,6 +150,7 @@ def main():
                 results.update(result)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         dict_to_text(output_eval_file, results)
+
     if args.do_predict:
         test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.tsv', 'test')
         if args.checkpoint_number == 0:

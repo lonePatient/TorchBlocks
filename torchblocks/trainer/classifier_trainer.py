@@ -18,8 +18,7 @@ class TextClassifierTrainer(TrainerBase):
                 outputs = model(**inputs)
             if do_eval:
                 loss, logits = outputs[:2]
-                if self.args.n_gpu > 1:
-                    loss = loss.mean()
+                loss = loss.mean()
                 labels = inputs['labels']
                 self.records['target'].append(tensor_to_cpu(labels))
                 self.records['loss_meter'].update(loss.item(), n=1)

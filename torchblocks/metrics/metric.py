@@ -4,13 +4,11 @@ from tqdm import tqdm
 import numpy as np
 from .base import Metric
 from ..utils.tensor import tensor_to_numpy
-
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import f1_score, classification_report
 from sklearn.metrics import matthews_corrcoef
 
 logger = logging.getLogger(__name__)
-
 
 def simple_accuracy(preds, labels):
     return (preds == labels).mean()
@@ -20,7 +18,6 @@ class Accuracy(Metric):
     '''
     Accuracy
     '''
-
     def update(self, input, target):
         if input.dim() == 1:
             self.preds = input.numpy()

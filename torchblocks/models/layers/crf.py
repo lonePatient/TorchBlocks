@@ -25,7 +25,7 @@ class CRF(nn.Module):
     .. _Viterbi algorithm: https://en.wikipedia.org/wiki/Viterbi_algorithm
     """
 
-    def __init__(self, num_tags: int, batch_first: bool = False) -> None:
+    def __init__(self, num_tags, batch_first = False):
         if num_tags <= 0:
             raise ValueError(f'invalid number of tags: {num_tags}')
         super().__init__()
@@ -34,10 +34,9 @@ class CRF(nn.Module):
         self.start_transitions = nn.Parameter(torch.empty(num_tags))
         self.end_transitions = nn.Parameter(torch.empty(num_tags))
         self.transitions = nn.Parameter(torch.empty(num_tags, num_tags))
-
         self.reset_parameters()
 
-    def reset_parameters(self) -> None:
+    def reset_parameters(self):
         """Initialize the transition parameters.
         The parameters will be initialized randomly from a uniform distribution
         between -0.1 and 0.1.
@@ -46,13 +45,10 @@ class CRF(nn.Module):
         nn.init.uniform_(self.end_transitions, -0.1, 0.1)
         nn.init.uniform_(self.transitions, -0.1, 0.1)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return f'{self.__class__.__name__}(num_tags={self.num_tags})'
 
-    def forward(self, emissions: torch.Tensor,
-                tags: torch.LongTensor,
-                mask: Optional[torch.ByteTensor] = None,
-                reduction: str = 'mean') -> torch.Tensor:
+    def forward(self, emissions,tags,mask= None,reduction = 'mean'):
         """Compute the conditional log likelihood of a sequence of tags given emission scores.
         Args:
             emissions (`~torch.Tensor`): Emission score tensor of size
@@ -99,10 +95,7 @@ class CRF(nn.Module):
             return llh.mean()
         return llh.sum() / mask.float().sum()
 
-    def decode(self, emissions: torch.Tensor,
-               mask: Optional[torch.ByteTensor] = None,
-               nbest: Optional[int] = None,
-               pad_tag: Optional[int] = None) -> List[List[List[int]]]:
+    def decode(self, emissions,mask = None,nbest = None,pad_tag = None):
         """Find the most likely tag sequence using Viterbi algorithm.
         Args:
             emissions (`~torch.Tensor`): Emission score tensor of size
@@ -121,12 +114,10 @@ class CRF(nn.Module):
         if nbest is None:
             nbest = 1
         if mask is None:
-            mask = torch.ones(emissions.shape[:2], dtype=torch.uint8,
-                              device=emissions.device)
+            mask = torch.ones(emissions.shape[:2], dtype=torch.uint8,device=emissions.device)
         if mask.dtype != torch.uint8:
             mask = mask.byte()
         self._validate(emissions, mask=mask)
-
         if self.batch_first:
             emissions = emissions.transpose(0, 1)
             mask = mask.transpose(0, 1)
@@ -135,22 +126,18 @@ class CRF(nn.Module):
             return self._viterbi_decode(emissions, mask, pad_tag).unsqueeze(0)
         return self._viterbi_decode_nbest(emissions, mask, nbest, pad_tag)
 
-    def _validate(self, emissions: torch.Tensor,
-                  tags: Optional[torch.LongTensor] = None,
-                  mask: Optional[torch.ByteTensor] = None) -> None:
+    def _validate(self, emissions,tags = None,mask = None):
         if emissions.dim() != 3:
             raise ValueError(f'emissions must have dimension of 3, got {emissions.dim()}')
         if emissions.size(2) != self.num_tags:
             raise ValueError(
                 f'expected last dimension of emissions is {self.num_tags}, '
                 f'got {emissions.size(2)}')
-
         if tags is not None:
             if emissions.shape[:2] != tags.shape:
                 raise ValueError(
                     'the first two dimensions of emissions and tags must match, '
                     f'got {tuple(emissions.shape[:2])} and {tuple(tags.shape)}')
-
         if mask is not None:
             if emissions.shape[:2] != mask.shape:
                 raise ValueError(
@@ -161,15 +148,12 @@ class CRF(nn.Module):
             if not no_empty_seq and not no_empty_seq_bf:
                 raise ValueError('mask of the first timestep must all be on')
 
-    def _compute_score(self, emissions: torch.Tensor,
-                       tags: torch.LongTensor,
-                       mask: torch.ByteTensor) -> torch.Tensor:
+    def _compute_score(self, emissions,tags,mask):
         # emissions: (seq_length, batch_size, num_tags)
         # tags: (seq_length, batch_size)
         # mask: (seq_length, batch_size)
         seq_length, batch_size = tags.shape
         mask = mask.float()
-
         # Start transition score and first emission
         # shape: (batch_size,)
         score = self.start_transitions[tags[0]]
@@ -194,8 +178,7 @@ class CRF(nn.Module):
 
         return score
 
-    def _compute_normalizer(self, emissions: torch.Tensor,
-                            mask: torch.ByteTensor) -> torch.Tensor:
+    def _compute_normalizer(self, emissions,mask):
         # emissions: (seq_length, batch_size, num_tags)
         # mask: (seq_length, batch_size)
         seq_length = emissions.size(0)
@@ -240,9 +223,7 @@ class CRF(nn.Module):
         # shape: (batch_size,)
         return torch.logsumexp(score, dim=1)
 
-    def _viterbi_decode(self, emissions: torch.FloatTensor,
-                        mask: torch.ByteTensor,
-                        pad_tag: Optional[int] = None) -> List[List[int]]:
+    def _viterbi_decode(self, emissions, mask,pad_tag = None):
         # emissions: (seq_length, batch_size, num_tags)
         # mask: (seq_length, batch_size)
         # return: (batch_size, seq_length)
@@ -322,10 +303,7 @@ class CRF(nn.Module):
 
         return torch.where(mask, best_tags_arr, oor_tag).transpose(0, 1)
 
-    def _viterbi_decode_nbest(self, emissions: torch.FloatTensor,
-                              mask: torch.ByteTensor,
-                              nbest: int,
-                              pad_tag: Optional[int] = None) -> List[List[List[int]]]:
+    def _viterbi_decode_nbest(self, emissions, mask, nbest, pad_tag = None):
         # emissions: (seq_length, batch_size, num_tags)
         # mask: (seq_length, batch_size)
         # return: (nbest, batch_size, seq_length)

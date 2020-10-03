@@ -21,16 +21,17 @@ def print_config(config):
     print("\n" + info + "\n")
 
 
-def to_json_string(data:Dict):
-    """Serializes this instance to a JSON string."""
-    return json.dumps(data, indent=2, sort_keys=True,cls=_Encoder)
-
 class _Encoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, torch.device):
             return str(obj)
         else:
             return super(_Encoder, self).default(obj)
+
+
+def to_json_string(data: Dict):
+    """Serializes this instance to a JSON string."""
+    return json.dumps(data, indent=2, sort_keys=True, cls=_Encoder)
 
 
 def seed_everything(seed=1029, deterministic_cudnn=False):
@@ -77,6 +78,24 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def load_or_initialize_parameters(model_path, model):
+    '''
+    加载模型or初始化模型参数
+    Args:
+        model_path:
+        model:
+    Returns:
+    '''
+    if model_path is not None:
+        # Initialize with pretrained model.
+        model.load_state_dict(torch.load(model_path), strict=False)
+    else:
+        # Initialize with normal distribution.
+        for n, p in list(model.named_parameters()):
+            if 'gamma' not in n and 'beta' not in n:
+                p.data.normal_(0, 0.02)
 
 
 def prepare_device(use_gpu, local_rank=-1):

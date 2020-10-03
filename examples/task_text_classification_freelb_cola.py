@@ -12,10 +12,6 @@ from transformers import BertForSequenceClassification, BertConfig, BertTokenize
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
-'''
-https://arxiv.org/pdf/1909.11764.pdf
-'''
-
 
 class ColaProcessor(TextClassifierProcessor):
 
@@ -53,6 +49,7 @@ class FreelbTrainer(TextClassifierTrainer):
         self.adv_model = FreeLB(adv_K=args.adv_K, adv_lr=args.adv_lr,
                                 adv_init_mag=args.adv_init_mag,
                                 adv_norm_type=args.adv_norm_type,
+                                base_model=args.base_model,
                                 adv_max_norm=args.adv_max_norm)
 
     def _train_step(self, model, batch, optimizer):
@@ -69,9 +66,11 @@ def main():
     parser.add_argument('--adv_init_mag', type=float, default=2e-2)
     parser.add_argument('--adv_norm_type', type=str, default="l2", choices=["l2", "linf"])
     parser.add_argument('--adv_max_norm', type=float, default=0, help="set to 0 to be unlimited")
+    parser.add_argument('--base_model', default='bert')
     parser.add_argument('--hidden_dropout_prob', type=float, default=0.1)
     parser.add_argument('--attention_probs_dropout_prob', type=float, default=0)
     args = parser.parse_args()
+
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
     # output dir
@@ -79,12 +78,14 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
+
     # device
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -100,6 +101,7 @@ def main():
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
     # trainer
     logger.info("initializing traniner")
     trainer = FreelbTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
@@ -110,6 +112,7 @@ def main():
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.tsv', 'train')
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
+
     # do eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
@@ -128,6 +131,7 @@ def main():
                 results.update(result)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         dict_to_text(output_eval_file, results)
+
     # do predict
     if args.do_predict:
         test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.tsv', 'test')

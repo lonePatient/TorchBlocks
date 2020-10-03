@@ -96,15 +96,17 @@ class TrainerBase:
         self.records['target'] = []  # true target list
         self.records['input_lens'] = []  # input length list
         self.records['loss_meter'] = AverageMeter()
+
         for key, value in kwargs.items():
             if key not in self.records:
                 self.records[key] = value
+
         for metric in self.metrics:
             metric.reset()
 
-    def build_optimizers(self, model):
+    def build_optimizer(self, model):
         '''
-        Setup the optimizer and the learning rate scheduler.
+        Setup the optimizer.
         '''
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
@@ -113,13 +115,16 @@ class TrainerBase:
             {"params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
              "weight_decay": 0.0},
         ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=self.args.learning_rate, eps=self.args.adam_epsilon,
+        optimizer = AdamW(optimizer_grouped_parameters,
+                          lr=self.args.learning_rate,
+                          eps=self.args.adam_epsilon,
+                          correct_bias=self.args.correct_bias,
                           weight_decay=self.args.weight_decay)
         return optimizer
 
     def build_scheduler(self, optimizer, t_total):
         '''
-        Setup the optimizer and the learning rate scheduler.
+        the learning rate scheduler.
         '''
         warmup_steps = int(t_total * self.args.warmup_proportion)
         scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=warmup_steps,
@@ -165,6 +170,16 @@ class TrainerBase:
         data_loader = DataLoader(test_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
         return data_loader
 
+    def build_inputs(self, batch):
+        '''
+        Sent all model inputs to the appropriate device (GPU on CPU)
+        rreturn:
+         The inputs are in a dictionary format
+        '''
+        batch = tuple(t.to(self.args.device) for t in batch)
+        inputs = {key: value for key, value in zip(self.batch_input_keys, batch)}
+        return inputs
+
     def _train_step(self, model, batch, optimizer):
         '''
         Training step
@@ -173,10 +188,8 @@ class TrainerBase:
         inputs = self.build_inputs(batch)
         outputs = model(**inputs)
         loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
-        if self.args.n_gpu > 1:
-            loss = loss.mean()  # mean() to average on multi-gpu parallel training
-        if self.args.gradient_accumulation_steps > 1:
-            loss = loss / self.args.gradient_accumulation_steps
+        loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        loss = loss / self.args.gradient_accumulation_steps
         if self.args.fp16:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
@@ -207,7 +220,7 @@ class TrainerBase:
         """
         train_dataloader = self.build_train_dataloader(train_dataset)
         t_total = len(train_dataloader) // self.args.gradient_accumulation_steps * self.args.num_train_epochs
-        optimizer = self.build_optimizers(model)
+        optimizer = self.build_optimizer(model)
         scheduler = self.build_scheduler(optimizer, t_total)
         optimizer, scheduler = self.restore_optimizer(optimizer, scheduler)
         model, optimizer = self.build_apex_and_distribute(model, optimizer)
@@ -218,6 +231,7 @@ class TrainerBase:
         if self.args.do_ema:
             ema = EMA(model, decay=self.args.ema_decay)
         seed_everything(self.args.seed)  # Added here for reproductibility (even between python 2 and 3)
+        print('Start training.')
         for epoch in range(0, int(self.args.num_train_epochs)):
             self.build_record_object()
             pbar = ProgressBar(n_total=len(train_dataloader), desc='Training')
@@ -236,7 +250,6 @@ class TrainerBase:
                         ema.apply_shadow(model)
                     self.tb_writer.add_scalar('Loss/train_epoch_loss', self.records['loss_meter'].avg,
                                               int(self.global_step / self.args.logging_steps))
-                    print(" ")
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
@@ -249,7 +262,7 @@ class TrainerBase:
                         state = self.build_state_object(model, optimizer, scheduler, self.global_step)
                         self.model_checkpoint.step(
                             state=state,
-                            current=self.records['result'][self.model_checkpoint.monitor],
+                            current=self.records['result'][self.model_checkpoint.monitor]
                         )
             if not self.scheduler_on_batch:  # epoch scheduler
                 scheduler.step()
@@ -298,7 +311,7 @@ class TrainerBase:
 
     def print_training_parameters(self, model, examples, t_total):
         '''
-        print training parameters infotmation
+        print training parameters information
         '''
         self.logger.info("Training/evaluation parameters %s", self.args)
         self.logger.info("***** Running training %s *****", self.args.task_name)
@@ -311,11 +324,10 @@ class TrainerBase:
                              torch.distributed.get_world_size() if self.args.local_rank != -1 else 1))
         self.logger.info("  Gradient Accumulation steps = %d", self.args.gradient_accumulation_steps)
         self.logger.info("  Total optimization steps = %d", t_total)
-        self.logger.info("  Total Number of Parameters: %d" %
-                         sum(p.numel() for p in model.parameters()))
+        self.logger.info("  Total Number of Parameters: %d" % sum(p.numel() for p in model.parameters()))
         # Calculating total number of trainable params
-        self.logger.info("  Total Number of Trainable Parameters: %d " %
-                         sum(p.numel() for p in model.parameters() if p.requires_grad))
+        self.logger.info("  Total Number of Trainable Parameters: %d " % sum(
+            p.numel() for p in model.parameters() if p.requires_grad))
 
     def build_apex_and_distribute(self, model, optimizer):
         if self.args.fp16:
@@ -324,6 +336,7 @@ class TrainerBase:
             model, optimizer = amp.initialize(model, optimizer, opt_level=self.args.fp16_opt_level)
         # multi-gpu training (should be after apex fp16 initialization)
         if self.args.n_gpu > 1:
+            print("{} GPUs are available.".format(self.args.n_gpu))
             model = torch.nn.DataParallel(model)
         # Distributed training (should be after apex fp16 initialization)
         if self.args.local_rank != -1:
@@ -334,29 +347,19 @@ class TrainerBase:
             )
         return model, optimizer
 
-    def build_inputs(self, batch):
-        '''
-        Sent all model inputs to the appropriate device (GPU on CPU)
-        rreturn:
-         The inputs are in a dictionary format
-        '''
-        batch = tuple(t.to(self.args.device) for t in batch)
-        inputs = {key: value for key, value in zip(self.batch_input_keys, batch)}
-        return inputs
-
     def print_evaluate_result(self):
         '''
         打印evaluation结果
         '''
-        print(' ')
         if len(self.records['result']) == 0:
-            self.logger.warning("eval record is empty")
+            self.logger.warning("eval result record is empty")
         self.logger.info("***** Evaluating results of %s *****", self.args.task_name)
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
-            self.logger.info("  %s = %s", key, str(self.records['result'][key]))
+            self.logger.info("  %s = %s", key, str(round(self.records['result'][key],5)))
             name = key.split("_")[1] if "_" in key else key
-            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}", self.records['result'][key],
+            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",
+                                      self.records['result'][key],
                                       self.global_step / self.args.logging_steps)
 
     def save_predict_result(self, file_name, data, file_dir=None):
@@ -401,11 +404,17 @@ class TrainerBase:
             torch.cuda.empty_cache()
 
     def predict(self, model, test_dataset, prefix=''):
+        '''
+        test数据集预测
+        '''
         test_dataloader = self.build_test_dataloader(test_dataset)
         self._predict_forward(model, test_dataloader, do_eval=False)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
         self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
 
     def _predict_forward(self, model, data_loader, do_eval, **kwargs):
+        '''
+        预测前向过程
+        '''
         self.build_record_object()
         raise NotImplementedError

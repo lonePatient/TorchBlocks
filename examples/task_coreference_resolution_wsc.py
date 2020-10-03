@@ -12,6 +12,7 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
+
 class WSCProcessor(TextClassifierProcessor):
 
     def get_labels(self):
@@ -64,6 +65,7 @@ def main():
         args.model_name = args.model_path.split("/")[-1]
     args.output_dir = args.output_dir + '{}'.format(args.model_name)
     os.makedirs(args.output_dir, exist_ok=True)
+
     # output dir
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
@@ -73,6 +75,7 @@ def main():
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -87,16 +90,19 @@ def main():
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
     # trainer
     logger.info("initializing traniner")
     trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
                                     batch_input_keys=processor.get_batch_keys(),
                                     metrics=[Accuracy()])
+
     # do train
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.json', 'train')
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.json', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
+
     # do eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
@@ -115,6 +121,7 @@ def main():
                 results.update(result)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         dict_to_text(output_eval_file, results)
+
     # do predict
     if args.do_predict:
         test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.json', 'test')
@@ -134,6 +141,7 @@ def main():
                     json_d['id'] = i
                     json_d['label'] = str(id2label[pred])
                     writer.write(json.dumps(json_d) + '\n')
+
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,6 @@ from torch.nn.modules.loss import _Loss
 class SpanLoss(_Loss):
     def __init__(self, alpha=1.0, ignore_index=-1, name='Span Cross Entropy Loss'):
         super().__init__()
-
         self.alpha = alpha
         self.name = name
         self.loss_fct = nn.CrossEntropyLoss(ignore_index=ignore_index)

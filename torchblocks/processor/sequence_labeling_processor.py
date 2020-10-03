@@ -60,7 +60,6 @@ class SequenceLabelingSpanProcessor(DataProcessor):
     '''
     span sequence labeling
     '''
-
     def __init__(self, tokenizer, data_dir,
                  prefix='',
                  encode_mode='one',

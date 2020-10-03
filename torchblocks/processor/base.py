@@ -23,12 +23,12 @@ class DataProcessor:
     """
 
     def __init__(self, data_dir, tokenizer,
-                 prefix='',
                  encode_mode='one',
                  add_special_tokens=True,
                  pad_to_max_length=True,
                  truncate_label=False,
                  truncation_strategy="longest_first",
+                 prefix='',
                  **kwargs):
         self.prefix = prefix
         self.data_dir = data_dir
@@ -57,8 +57,12 @@ class DataProcessor:
 
     def encode_plus(self, text_a, text_b, max_length):
         '''
-        If the data is sentence Pair, -> [CLS]senA[SEP]senB[SEP]
-        If data is single sentence -> [CLS]senA[SEP]
+        if add_special_tokens is True:
+            If the data is sentence Pair, -> [CLS]senA[SEP]senB[SEP]
+            If data is single sentence -> [CLS]senA[SEP]
+        if add_special_tokens is False:
+            If the data is sentence Pair, -> senA+senB
+            If data is single sentence -> senA
         '''
         inputs = self.tokenizer.encode_plus(text=text_a,
                                             text_pair=text_b,
@@ -83,7 +87,7 @@ class DataProcessor:
     def encode(self, texts, max_seq_length):
         '''
         Args:
-            texts: 列表形式
+            texts: 列表形式,[text_a,text_b] or [[text_a1,text_b1],[text_a2,text_b2]],....
             max_seq_length: 最大长度
         Returns:
         '''
@@ -93,13 +97,13 @@ class DataProcessor:
             assert len(texts) == 2, "texts length: expected to be 2"
             inputs = self.encode_plus(text_a=texts[0], text_b=texts[1], max_length=max_seq_length)
         elif self.encode_mode == 'pair':
-            # texts:[[text_a,text_b],[text_a,text_b]]
+            # texts:[[text_a1,text_b1],[text_a2,text_b2]]
             assert len(texts) == 2, "texts length: expected to be 2"
             for i in range(2):
                 _inputs = self.encode_plus(text_a=texts[i][0], text_b=texts[i][1], max_length=max_seq_length)
                 inputs.update(({f'{LOWERCASE_STRS[i]}_' + key: value for key, value in _inputs.items()}))
         elif self.encode_mode == 'triple':
-            # texts:[[text_a,text_b],[text_a,text_b],[text_a,text_b]]
+            # texts:[[text_a1,text_b1],[text_a2,text_b2],[text_a3,text_b3]]
             assert len(texts) == 3, "texts length: expected to be 3"
             for i in range(3):
                 _inputs = self.encode_plus(text_a=texts[i][0], text_b=texts[i][1], max_length=max_seq_length)
@@ -108,21 +112,20 @@ class DataProcessor:
 
     def collate_fn(self, batch):
         """
-        batch should be a list of (input_ids, attention_mask, *,*,*, labels) tuples...
-        Returns a padded tensor of sequences sorted from longest to shortest,
+        batch数据动态长度变化（根据mask进行计算），batch形式必须满足：
+        (input_ids, attention_mask, *,*,*, labels) tuples...
         """
         batch = list(map(torch.stack, zip(*batch)))
         max_seq_len = torch.max(torch.sum(batch[1], 1)).item()
         num_inputs = len(batch)
+        # test时一般label为None，所以导致keys_num!=input_keys_num
         has_label = num_inputs == len(self.get_batch_keys())
-        for i in range(num_inputs):  # test时一般label为None，所以导致keys_num!=input_keys_num
+        for i in range(num_inputs):
             if batch[i].dim()==1:
                 continue
-            if i == num_inputs - 1:
-                if self.truncate_label and has_label:
+            if i == num_inputs - 1 and has_label:# 最后一个是否为label
+                if self.truncate_label:
                     batch[i] = batch[i][:, :max_seq_len]
-                else:
-                    continue
             else:
                 if batch[i].size(1) > max_seq_len:
                     batch[i] = batch[i][:, :max_seq_len]
@@ -170,7 +173,6 @@ class DataProcessor:
         # Load processor features from cache or dataset file
         cached_features_file = f'cached_{mode}_{self.prefix}_{max_seq_length}'
         cached_features_file = os.path.join(self.data_dir, cached_features_file)
-
         if os.path.exists(cached_features_file):
             logger.info("Loading features from cached file %s", cached_features_file)
             features = torch.load(cached_features_file)
@@ -219,14 +221,28 @@ class DataProcessor:
             logger.info("%s: %s" % (str(key), value))
 
     def convert_to_features(self, examples, label_list, max_seq_length):
+        '''
+        转化为特征
+        '''
         raise NotImplementedError()
 
     def create_examples(self, **kwargs):
+        '''
+        创建exmaples
+        '''
         raise NotImplementedError()
 
     def read_data(self, input_file):
+        '''
+        读取数据
+        '''
         raise NotImplementedError()
 
     def get_labels(self):
-        """Gets the list of labels for this processor set."""
+        """
+        标签列表
+        """
         raise NotImplementedError()
+
+
+

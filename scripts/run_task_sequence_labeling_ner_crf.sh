@@ -1,5 +1,5 @@
 CURRENT_DIR=`pwd`
-export BERT_BASE_DIR=$CURRENT_DIR/pretrained_models/bert-base
+export BERT_BASE_DIR=$CURRENT_DIR/pretrained_models/bert-base-cn
 export DATA_DIR=$CURRENT_DIR/dataset
 export OUTPUR_DIR=$CURRENT_DIR/outputs
 export TASK_NAME=cner

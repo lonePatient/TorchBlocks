@@ -13,13 +13,7 @@ MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
-'''
-Lookahead Optimizer: k steps forward, 1 step back
-'''
-
-
 class ColaProcessor(TextClassifierProcessor):
-
 
     def get_labels(self):
         """See base class."""
@@ -69,6 +63,7 @@ def main():
     parser.add_argument('--look_k', type=int, default=5)
     parser.add_argument('--look_alpha', type=float, default=0.5)
     args = parser.parse_args()
+
     # output dir
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
@@ -76,12 +71,14 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
+
     # device
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -89,6 +86,7 @@ def main():
     label_list = processor.get_labels()
     num_labels = len(label_list)
     args.num_labels = num_labels
+
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path, num_labels=num_labels,
@@ -105,6 +103,7 @@ def main():
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.tsv', 'train')
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
         trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
+    # eval
     if args.do_eval and args.local_rank in [-1, 0]:
         results = {}
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
@@ -122,6 +121,7 @@ def main():
                 results.update(result)
         output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
         dict_to_text(output_eval_file, results)
+    # predict
     if args.do_predict:
         test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.tsv', 'test')
         if args.checkpoint_number == 0:

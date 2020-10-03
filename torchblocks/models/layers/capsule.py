@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Capsule(nn.Module):
     def __init__(self, input_dim_capsule=1024, num_capsule=5, dim_capsule=5, routings=4):
         super(Capsule, self).__init__()
@@ -29,7 +30,7 @@ class Capsule(nn.Module):
                 b = (torch.sum(outputs.unsqueeze(2) * u_hat_vecs, dim=-1))  # bik,bijk->bij
         return outputs  # (batch_size, num_capsule, dim_capsule)
 
-    def squash(self,x, axis=-1):
+    def squash(self, x, axis=-1):
         s_squared_norm = (x ** 2).sum(axis, keepdim=True)
         scale = torch.sqrt(s_squared_norm + 1e-7)
         return x / scale

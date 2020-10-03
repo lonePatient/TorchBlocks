@@ -73,6 +73,7 @@ def main():
     parser = build_argparse()
     parser.add_argument('--markup', type=str, default='bios', choices=['bios', 'bio'])
     args = parser.parse_args()
+
     # output dir
     if args.model_name is None:
         args.model_name = args.model_path.split("/")[-1]
@@ -80,12 +81,14 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
     prefix = "_".join([args.model_name, args.task_name])
     logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
+
     # device
     logger.info("initializing device")
     args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
     seed_everything(args.seed)
     args.model_type = args.model_type.lower()
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
+
     # data processor
     logger.info("initializing data processor")
     tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
@@ -95,6 +98,7 @@ def main():
     id2label = {i: label for i, label in enumerate(label_list)}
     args.id2label = id2label
     args.num_labels = num_labels
+
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(args.model_path,
@@ -102,6 +106,7 @@ def main():
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
     # trainer
     logger.info("initializing traniner")
     trainer = SequenceLabelingSpanTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,

@@ -1,11 +1,9 @@
 import os
 import logging
 from collections import Counter, OrderedDict
-
 logger = logging.getLogger(__name__)
 
 VOCAB_NAME = "vocab.txt"
-
 
 class Vocabulary(object):
     def __init__(self,
