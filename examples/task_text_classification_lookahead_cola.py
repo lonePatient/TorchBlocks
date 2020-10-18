@@ -6,7 +6,7 @@ from torchblocks.trainer import TextClassifierTrainer
 from torchblocks.processor import TextClassifierProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
-from torchblocks.optim import Lookahead, AdamW
+from torchblocks.optims import Lookahead, AdamW
 from transformers import BertForSequenceClassification, BertConfig, BertTokenizer, WEIGHTS_NAME
 
 MODEL_CLASSES = {

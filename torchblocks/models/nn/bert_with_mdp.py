@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 from transformers import BertModel, BertPreTrainedModel
-from ..layers.dropouts import MultiSampleDropout
+from torchblocks.models.layers.dropouts import MultiSampleDropout
 
 class BertWithMDP(BertPreTrainedModel):
     '''

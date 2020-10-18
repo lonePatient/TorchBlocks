@@ -1,6 +1,6 @@
 import logging
-from .base import DataProcessor
-from .utils import InputFeatures
+from torchblocks.processor.base import DataProcessor
+from torchblocks.processor.utils import InputFeatures
 
 logger = logging.getLogger(__name__)
 

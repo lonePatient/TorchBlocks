@@ -5,14 +5,13 @@ from argparse import Namespace
 from torch.utils.data.dataloader import DataLoader, default_collate
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-from torch.utils.tensorboard import SummaryWriter
 
-from ..optim import AdamW
-from ..optim.lr_scheduler import get_linear_schedule_with_warmup
+from torchblocks.optims import AdamW
+from torchblocks.optims.lr_scheduler import get_linear_schedule_with_warmup
 
-from ..utils.paths import save_pickle, json_to_text
-from ..utils.tools import seed_everything, AverageMeter, to_json_string
-from ..callback import ModelCheckpoint, EarlyStopping, ProgressBar, TrainLogger, EMA
+from torchblocks.utils.paths import save_pickle, json_to_text
+from torchblocks.utils.tools import seed_everything, AverageMeter, to_json_string
+from torchblocks.callback import ModelCheckpoint, EarlyStopping, ProgressBar, TrainLogger, EMA
 
 try:
     from apex import amp
@@ -21,9 +20,29 @@ try:
 except ImportError:
     _has_apex = False
 
+try:
+    from torch.utils.tensorboard import SummaryWriter
+
+    _has_tensorboard = True
+except ImportError:
+    try:
+        from tensorboardX import SummaryWriter
+
+        _has_tensorboard = True
+    except ImportError:
+        _has_tensorboard = False
+
+
+def is_tensorboard_available():
+    return _has_tensorboard
+
 
 def is_apex_available():
     return _has_apex
+
+
+if not is_tensorboard_available():
+    from torchblocks.callback.file_writer import FileWriter
 
 
 class TrainerBase:
@@ -65,25 +84,28 @@ class TrainerBase:
             )
 
         # tensorboard
-        self.tb_writer = SummaryWriter(log_dir=os.path.join(self.args.output_dir, self.prefix + '_tb_logs'))
-        self.tb_writer.add_text("TrainArgs", to_json_string(self.args.__dict__))
+        if is_tensorboard_available():
+            self.tb_writer = SummaryWriter(log_dir=os.path.join(args.output_dir, f'{self.prefix}_tb_logs'))
+            self.tb_writer.add_text("TrainArgs", to_json_string(args.__dict__))
+        else:
+            self.tb_writer = FileWriter(log_dir=os.path.join(args.output_dir, f'{self.prefix}_tb_logs'))
 
         # checkpoint
         self.model_checkpoint = ModelCheckpoint(
-            mode=self.args.mcpt_mode,
-            monitor=self.args.monitor,
-            checkpoint_dir=self.args.output_dir,
-            save_best_only=self.args.do_save_best
+            mode=args.mcpt_mode,
+            monitor=args.monitor,
+            checkpoint_dir=args.output_dir,
+            save_best_only=args.do_save_best
         )
 
         # earlystopping
-        if self.args.patience <= 0:
+        if args.patience <= 0:
             self.early_stopping = None
         else:
             self.early_stopping = EarlyStopping(
-                patience=self.args.patience,
-                mode=self.args.mcpt_mode,
-                monitor=self.args.monitor
+                patience=args.patience,
+                mode=args.mcpt_mode,
+                monitor=args.monitor
             )
 
     def build_record_object(self, **kwargs):
@@ -149,9 +171,6 @@ class TrainerBase:
         if eval_dataset is None:
             raise ValueError("Trainer: evaluation requires an eval_dataset.")
         batch_size = self.args.per_gpu_eval_batch_size * max(1, self.args.n_gpu)
-        self.logger.info("***** Running evaluation %s *****", self.args.task_name)
-        self.logger.info("  Num examples = %d", len(eval_dataset))
-        self.logger.info("  Batch size = %d", batch_size)
         sampler = SequentialSampler(eval_dataset) if self.args.local_rank == -1 else DistributedSampler(eval_dataset)
         data_loader = DataLoader(eval_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
         return data_loader
@@ -163,9 +182,6 @@ class TrainerBase:
         if test_dataset is None:
             raise ValueError("Trainer: evaluation requires an test_dataset.")
         batch_size = self.args.per_gpu_eval_batch_size * max(1, self.args.n_gpu)
-        self.logger.info("******** Running prediction %s ********", self.args.task_name)
-        self.logger.info("  Num examples = %d", len(test_dataset))
-        self.logger.info("  Batch size = %d", batch_size)
         sampler = SequentialSampler(test_dataset) if self.args.local_rank == -1 else DistributedSampler(test_dataset)
         data_loader = DataLoader(test_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
         return data_loader
@@ -253,6 +269,8 @@ class TrainerBase:
                     self.evaluate(model, eval_dataset)
                     if self.args.do_ema:
                         ema.restore(model)
+                    if hasattr(self.tb_writer, 'save'):
+                        self.tb_writer.save()
                 if (self.args.local_rank in [-1, 0]
                         and self.args.save_steps > 0
                         and self.global_step % self.args.save_steps == 0
@@ -356,7 +374,7 @@ class TrainerBase:
         self.logger.info("***** Evaluating results of %s *****", self.args.task_name)
         self.logger.info("  global step = %s", self.global_step)
         for key in sorted(self.records['result'].keys()):
-            self.logger.info("  %s = %s", key, str(round(self.records['result'][key],5)))
+            self.logger.info("  %s = %s", key, str(round(self.records['result'][key], 5)))
             name = key.split("_")[1] if "_" in key else key
             self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",
                                       self.records['result'][key],

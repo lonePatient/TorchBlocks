@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from ..layers.crf import CRF
-from ..layers.linears import PoolerEndLogits, PoolerStartLogits
+from torchblocks.models.layers.crf import CRF
+from torchblocks.models.layers.linears import PoolerEndLogits, PoolerStartLogits
 from transformers import BertModel, BertPreTrainedModel
 from torchblocks.losses.span_loss import SpanLoss
 

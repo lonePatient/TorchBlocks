@@ -1,8 +1,8 @@
 import torch.nn as nn
 from torch.nn import LayerNorm
-from ..layers.crf import CRF
-from ..layers.dropouts import SpatialDropout
-from ..bases.model_base import TrainModel
+from torchblocks.models.layers.crf import CRF
+from torchblocks.models.layers.dropouts import SpatialDropout
+from torchblocks.models.bases.model_base import TrainModel
 
 
 class LSTMCRF(TrainModel):

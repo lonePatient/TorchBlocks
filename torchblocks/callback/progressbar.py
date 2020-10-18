@@ -1,5 +1,7 @@
 import sys
 import time
+
+
 class ProgressBar(object):
     '''
     custom progress bar
@@ -8,7 +10,8 @@ class ProgressBar(object):
         >>> step = 2
         >>> pbar(step=step,info={'loss':20})
     '''
-    def __init__(self, n_total,width=30,desc = 'Training'):
+
+    def __init__(self, n_total, width=30, desc='Training'):
         self.width = width
         self.n_total = n_total
         self.start_time = time.time()
@@ -24,7 +27,7 @@ class ProgressBar(object):
         prog_width = int(self.width * recv_per)
         if prog_width > 0:
             bar += '=' * (prog_width - 1)
-            if current< self.n_total:
+            if current < self.n_total:
                 bar += ">"
             else:
                 bar += '='
@@ -51,8 +54,8 @@ class ProgressBar(object):
                 time_info = f' {time_per_unit * 1e6:.1f}us/step'
         show_bar += time_info
         if len(info) != 0:
-            show_bar = f'{show_bar} ' + \
-                        "-".join([f' {key}: {value:.4f} ' for key, value in info.items()])
+            show_bar = f'{show_bar} ' + " [" + "-".join(
+                [f' {key}={value:.4f} ' for key, value in info.items()]) + "]"
         sys.stdout.write(show_bar)
         sys.stdout.flush()
         if current == self.n_total:

@@ -1,6 +1,6 @@
 import os
 import json
-from torchblocks.metrics import NERScore
+from torchblocks.metrics import SequenceLabelingScore
 from torchblocks.trainer import SequenceLabelingTrainer
 from torchblocks.callback import TrainLogger
 from torchblocks.processor import SequenceLabelingProcessor, InputExample
@@ -129,7 +129,7 @@ def main():
     logger.info("initializing traniner")
     trainer = SequenceLabelingTrainer(args=args, logger=logger, collate_fn=processor.collate_fn,
                                       batch_input_keys=processor.get_batch_keys(),
-                                      metrics=[NERScore(id2label, markup=args.markup)])
+                                      metrics=[SequenceLabelingScore(id2label, markup=args.markup)])
     # do train
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.json', 'train', )

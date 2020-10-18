@@ -1,4 +1,4 @@
-from .modeling_bert_for_theseus import BertEncoder
+from torchblocks.models.transformer.modeling_bert_for_theseus import BertEncoder
 
 class ConstantReplacementScheduler:
     def __init__(self, bert_encoder: BertEncoder, replacing_rate, replacing_steps=None):

@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-from .base import TrainerBase
-from ..callback import ProgressBar
-from ..metrics.ner_utils import get_spans
-from ..utils.tensor import tensor_to_list
+from torchblocks.trainer.base import TrainerBase
+from torchblocks.callback import ProgressBar
+from torchblocks.metrics.utils import get_spans
+from torchblocks.utils.tensor import tensor_to_list
 
 
 class SequenceLabelingTrainer(TrainerBase):

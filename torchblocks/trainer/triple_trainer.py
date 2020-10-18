@@ -1,8 +1,8 @@
 import torch
-from .base import TrainerBase
-from ..callback import ProgressBar
-from ..utils.tensor import tensor_to_cpu
-from ..losses.triplet_loss import DISTANCE2METRIC
+from torchblocks.trainer.base import TrainerBase
+from torchblocks.callback import ProgressBar
+from torchblocks.utils.tensor import tensor_to_cpu
+from torchblocks.losses.triplet_loss import DISTANCE2METRIC
 
 
 class TripleTrainer(TrainerBase):

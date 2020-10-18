@@ -1,6 +1,6 @@
 import os
 
-from torchblocks.metrics import NERScore
+from torchblocks.metrics import SequenceLabelingScore
 from torchblocks.trainer import SequenceLabelingSpanTrainer
 from torchblocks.callback import TrainLogger
 from torchblocks.processor import SequenceLabelingSpanProcessor, InputExample
@@ -9,7 +9,7 @@ from torchblocks.utils import prepare_device, get_checkpoints
 from torchblocks.data import CNTokenizer
 from torchblocks.models.nn import BertSpanForNer
 from transformers import WEIGHTS_NAME, BertConfig
-from torchblocks.metrics.ner_utils import get_spans
+from torchblocks.metrics.utils import get_spans
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertSpanForNer, CNTokenizer)
@@ -111,7 +111,7 @@ def main():
     logger.info("initializing traniner")
     trainer = SequenceLabelingSpanTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
                                           batch_input_keys=processor.get_batch_keys(),
-                                          metrics=[NERScore(id2label, markup=args.markup, is_spans=True)])
+                                          metrics=[SequenceLabelingScore(id2label, markup=args.markup, is_spans=True)])
     # do train
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.char.bmes', 'train')

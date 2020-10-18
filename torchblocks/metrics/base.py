@@ -1,6 +1,4 @@
 class Metric:
-    def __init__(self):
-        pass
 
     def update(self, outputs, target):
         raise NotImplementedError

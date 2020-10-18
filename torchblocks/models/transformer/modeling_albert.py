@@ -7,7 +7,7 @@ import os
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
-from .configuration_albert import AlbertConfig
+from torchblocks.models.transformer.configuration_albert import AlbertConfig
 
 from transformers.modeling_utils import PreTrainedModel, prune_linear_layer
 from transformers import add_start_docstrings

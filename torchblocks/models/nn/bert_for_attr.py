@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from torch.nn import LayerNorm
-from ..layers.crf import CRF
-from ..layers.attentions import CosAttention
+from torchblocks.models.layers.crf import CRF
+from torchblocks.models.layers.attentions import CosAttention
 from transformers.modeling_bert import BertPreTrainedModel, BertModel
 
 

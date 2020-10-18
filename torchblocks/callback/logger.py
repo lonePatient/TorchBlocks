@@ -9,6 +9,7 @@ plt.switch_backend('agg')  # 防止ssh上绘图问题
 
 
 class TrainLogger:
+
     def __init__(self, log_dir, prefix='', log_file_level=logging.NOTSET):
         self.prefix = prefix
         self.dicts = defaultdict(list)
@@ -70,7 +71,7 @@ class TrainLogger:
         _dict = {name: value, 'step': step, }
         self.dicts[name].append(_dict)
 
-    def save(self, plot=True):
+    def save(self, plot=True,to_csv=True):
         save_json(data=self.dicts,file_path=self.json_file)
         if plot:
             self.plot()

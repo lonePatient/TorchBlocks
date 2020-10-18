@@ -34,7 +34,13 @@ def to_json_string(data: Dict):
     return json.dumps(data, indent=2, sort_keys=True, cls=_Encoder)
 
 
-def seed_everything(seed=1029, deterministic_cudnn=False):
+def _select_seed_randomly(min_seed_value=0, max_seed_value=255):
+    seed = random.randint(min_seed_value, max_seed_value)
+    logger.warning(f"No correct seed found, seed set to {seed}")
+    return seed
+
+
+def seed_everything(seed=None, deterministic_cudnn=False):
     '''
     Setting multiple seeds to make runs reproducible.
 
@@ -46,14 +52,14 @@ def seed_everything(seed=1029, deterministic_cudnn=False):
     :type deterministic_cudnn: bool
     :return: None
     '''
+    if seed is None:
+        seed = int(_select_seed_randomly())
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    # some cudnn methods can be random even after fixing the seed
-    # unless you tell it to be deterministic
     if deterministic_cudnn:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False

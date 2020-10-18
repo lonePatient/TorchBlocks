@@ -26,8 +26,8 @@ class Shampoo(Optimizer):
         update_freq: update frequency to compute inverse (default: 1)
 
     Example:
-        >>> import torch_optimizer as optim
-        >>> optimizer = optim.Shampoo(model.parameters(), lr=0.01)
+        >>> import torch_optimizer as optims
+        >>> optimizer = optims.Shampoo(model.parameters(), lr=0.01)
         >>> optimizer.zero_grad()
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()

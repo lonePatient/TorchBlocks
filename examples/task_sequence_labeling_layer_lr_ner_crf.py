@@ -1,12 +1,12 @@
 import os
-from torchblocks.metrics import NERScore
+from torchblocks.metrics import SequenceLabelingScore
 from torchblocks.trainer import SequenceLabelingTrainer
 from torchblocks.callback import TrainLogger
 from torchblocks.processor import SequenceLabelingProcessor, InputExample
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
 from torchblocks.data import CNTokenizer
-from torchblocks.optim import AdamW
+from torchblocks.optims import AdamW
 from torchblocks.models.nn import BertCRFForNer
 from transformers import WEIGHTS_NAME, BertConfig
 
@@ -148,7 +148,7 @@ def main():
     logger.info("initializing traniner")
     trainer = LayerLRTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
                              batch_input_keys=processor.get_batch_keys(),
-                             metrics=[NERScore(id2label, markup=args.markup)])
+                             metrics=[SequenceLabelingScore(id2label, markup=args.markup)])
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.char.bmes', 'train')
         eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.char.bmes', 'dev')

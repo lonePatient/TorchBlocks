@@ -1,11 +1,11 @@
 from collections import Counter
-from .base import Metric
-from .ner_utils import *
+from torchblocks.metrics.base import Metric
+from torchblocks.metrics.utils import *
 
 
-class NERScore(Metric):
+class SequenceLabelingScore(Metric):
+
     def __init__(self, id2label, markup='bios', is_spans=False):
-        super(NERScore).__init__()
         self.id2label = id2label
         self.markup = markup
         self.is_spans = is_spans
@@ -66,3 +66,5 @@ class NERScore(Metric):
                 self.origins.extend(label_entities)
                 self.founds.extend(pre_entities)
                 self.rights.extend([pre_entity for pre_entity in pre_entities if pre_entity in label_entities])
+    def name(self):
+        pass

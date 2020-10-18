@@ -4,6 +4,7 @@ from .adabound import *
 from .adamod import *
 from .adax import *
 from .adamp import *
+from .adabelief import *
 from .lamb import *
 from .lars import *
 from .lookahead import *
