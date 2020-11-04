@@ -51,7 +51,7 @@ class Accuracy(Metric):
         self.total += target.numel()
 
     def value(self):
-        return (self.correct.float() / self.total).items()
+        return (self.correct.float() / self.total).item()
 
     def name(self):
         return 'acc'
