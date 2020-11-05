@@ -69,12 +69,12 @@ class ModelCheckpoint(object):
 
     def step(self, state, current):
         if self.save_best_only:
-            if self.monitor_op(current, self.best_score):
+            if self.monitor_op(current, self.best):
                 if self.verbose:
                     logger.info(
-                        f" Steps {state['step']}: {self.monitor} improved from {self.best_score:.5f} to {current:.5f}")
-                self.best_score = current
-                state['best_score'] = self.best_score
+                        f" Steps {state['step']}: {self.monitor} improved from {self.best:.5f} to {current:.5f}")
+                self.best = current
+                state['best'] = self.best
                 self.save_checkpoint(state, self.output_dir)
         else:
             output_dir = self.output_dir % state['step']
