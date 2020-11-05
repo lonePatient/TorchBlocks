@@ -378,7 +378,7 @@ class TrainerBase:
             name = key.split("_")[1] if "_" in key else key
             self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",
                                       self.records['result'][key],
-                                      self.global_step / self.args.logging_steps)
+                                      int(self.global_step / self.args.logging_steps))
 
     def save_predict_result(self, file_name, data, file_dir=None):
         '''
