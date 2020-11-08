@@ -8,12 +8,7 @@ class FocalLoss(nn.Module):
     Softmax and sigmoid focal loss
     """
 
-    def __init__(self,
-                 num_labels,
-                 activation_type='softmax',
-                 gamma=2.0,
-                 alpha=0.25,
-                 epsilon=1.e-9):
+    def __init__(self, num_labels, activation_type='softmax', gamma=2.0, alpha=0.25, epsilon=1.e-9):
 
         super(FocalLoss, self).__init__()
         self.num_labels = num_labels

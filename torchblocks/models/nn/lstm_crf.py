@@ -22,7 +22,6 @@ class LSTMCRF(TrainModel):
         self.crf = CRF(num_tags=config.num_labels, batch_first=True)
 
     def forward(self, input_ids,
-                token_type_ids=None,
                 attention_mask=None,
                 labels=None):
         embs = self.embedding(input_ids)

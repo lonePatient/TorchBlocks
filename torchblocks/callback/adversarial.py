@@ -1,5 +1,5 @@
 import torch
-from ..losses import KL
+from torchblocks.losses import KL
 
 
 class FGM(object):

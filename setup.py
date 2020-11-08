@@ -16,7 +16,7 @@ setup(
         "scikit-learn",
         "tokenizers >= 0.7.0",
         "torch >= 1.1.0",
-        "transformers >= 2.10.0",
+        "transformers >= 2.9.0",
         "sentencepiece",
         "sacremoses",
     ],

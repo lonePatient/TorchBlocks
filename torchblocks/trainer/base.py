@@ -289,7 +289,7 @@ class TrainerBase:
                 self.early_stopping.step(current=self.records['result'][self.early_stopping.monitor])
                 if self.early_stopping.stop_training:
                     break
-            if "cuda" in str(self.args.device):
+            if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         if self.tb_writer:
             self.tb_writer.close()
@@ -388,7 +388,7 @@ class TrainerBase:
             file_dir = self.args.output_dir
         file_path = os.path.join(file_dir, file_name)
         if ".pkl" in file_path:
-            save_pickle(data=data, file_path=file_path)
+            save_pickle(file_path=file_path, data=data)
         elif ".json" in file_path:
             json_to_text(file_path=file_path, data=data)
         else:
@@ -418,7 +418,7 @@ class TrainerBase:
             self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.print_evaluate_result()
-        if 'cuda' in str(self.args.device):
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     def predict(self, model, test_dataset, prefix=''):

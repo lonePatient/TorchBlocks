@@ -25,31 +25,34 @@ class EarlyStopping(object):
             monitored has stopped increasing. Default: ``'min'``.
     '''
 
-    def __init__(self, min_delta=0, patience=10, verbose=False, mode='min', monitor='eval_loss', checkpointed_state=None,
-                 save_state_path=None):
+    def __init__(self, min_delta=0, patience=10, verbose=False, mode='min', monitor='eval_loss', save_state_path=None,
+                 checkpoint_state_path=None):
+
         self.patience = patience
         self.verbose = verbose
         self.min_delta = min_delta
         self.monitor = monitor
-        self.save_state_path = save_state_path
         self.wait_count = 0
         self.stop_training = False
+        self.save_state_path = save_state_path
 
         if mode == 'min':
             self.monitor_op = np.less
         elif mode == 'max':
             self.monitor_op = np.greater
         else:
-            raise ValueError(f'EarlyStopping mode {mode} is unknown')
+            raise ValueError("mode: expected one of (min,max)")
+
         if self.monitor_op == np.greater:
             self.min_delta *= 1
         else:
             self.min_delta *= -1
+
         if self.verbose:
             logger.info(f'EarlyStopping mode set to {mode} for monitoring {self.monitor}.')
 
-        if checkpointed_state is not None:
-            self.load_state(checkpointed_state)
+        if checkpoint_state_path is not None:
+            self.load_state(checkpoint_state_path)
         else:
             self.best_score = np.Inf if self.monitor_op == np.less else -np.Inf
 
@@ -62,9 +65,10 @@ class EarlyStopping(object):
         torch.save(state, save_path)
 
     def load_state(self, checkpointed_state):
-        self.wait_count = checkpointed_state['wait_count']
-        self.best_score = checkpointed_state['best_score']
-        self.patience = checkpointed_state['patience']
+        state = torch.load(checkpointed_state)
+        self.wait_count = state['wait_count']
+        self.best_score = state['best_score']
+        self.patience = state['patience']
 
     def step(self, current):
         if self.monitor_op(current - self.min_delta, self.best_score):

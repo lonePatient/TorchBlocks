@@ -17,23 +17,23 @@ class ModelCheckpoint(object):
     save_best_only: When `True`, always saves the best score model to a file `checpoint-best`. Default: ``False``.
     '''
 
-    def __init__(self, checkpoint_dir, monitor='eval_loss', mode='min', save_best_only=False,verbose=False):
+    def __init__(self, checkpoint_dir, monitor='eval_loss', mode='min', save_best_only=False, verbose=False):
 
         ensure_dir(checkpoint_dir)
-        self.base_path = checkpoint_dir
         self.monitor = monitor
-        self.verbose=verbose
+        self.verbose = verbose
+        self.base_path = checkpoint_dir
         self.save_best_only = save_best_only
 
         if save_best_only:
             if mode == 'min':
                 self.monitor_op = np.less
-                self.best = np.Inf
+                self.best_score = np.Inf
             elif mode == 'max':
                 self.monitor_op = np.greater
-                self.best = -np.Inf
+                self.best_score = -np.Inf
             else:
-                raise ValueError(f'ModelCheckpoint mode {mode} is unknown')
+                raise ValueError("mode: expected one of (min,max)")
             self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-best")
         else:
             self.output_dir = os.path.join(checkpoint_dir, f"{DEFAULT_SAVE_MODEL_NAME}-%s")
@@ -69,12 +69,12 @@ class ModelCheckpoint(object):
 
     def step(self, state, current):
         if self.save_best_only:
-            if self.monitor_op(current, self.best):
+            if self.monitor_op(current, self.best_score):
                 if self.verbose:
                     logger.info(
-                        f" Steps {state['step']}: {self.monitor} improved from {self.best:.5f} to {current:.5f}")
-                self.best = current
-                state['best'] = self.best
+                        f" Steps {state['step']}: {self.monitor} improved from {self.best_score:.5f} to {current:.5f}")
+                self.best_score = current
+                state['best_score'] = self.best_score
                 self.save_checkpoint(state, self.output_dir)
         else:
             output_dir = self.output_dir % state['step']

@@ -71,7 +71,7 @@ class TrainLogger:
         _dict = {name: value, 'step': step, }
         self.dicts[name].append(_dict)
 
-    def save(self, plot=True,to_csv=True):
+    def save(self, plot=True):
         save_json(data=self.dicts,file_path=self.json_file)
         if plot:
             self.plot()

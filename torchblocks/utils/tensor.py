@@ -1,7 +1,6 @@
 import torch
-import numpy as np
 import numbers
-
+import numpy as np
 
 def numpy_to_tensor(array):
     if not isinstance(array, np.ndarray):

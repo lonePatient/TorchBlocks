@@ -131,6 +131,7 @@ class F1Score(Metric):
         return best_threshold, best_score
 
     def update(self, input, target):
+
         self.y_true = tensor_to_numpy(target)
         if self.normalizate and self.task_type == 'binary':
             y_prob = tensor_to_numpy(input.sigmoid().data)
@@ -138,13 +139,13 @@ class F1Score(Metric):
             y_prob = tensor_to_numpy(input.softmax(-1).data)
         else:
             y_prob = tensor_to_numpy(input)
+
         if self.task_type == 'binary':
             if self.thresh and self.search_thresh == False:
                 self.y_pred = (y_prob > self.thresh).astype(int)
-                self.value()
             else:
                 thresh, f1 = self.thresh_search(y_prob=y_prob)
-                print(f"Best thresh: {thresh:.4f} - F1 Score: {f1:.4f}")
+                logger.info(f"Best Thresh: {thresh:.4f} - F1 Score: {f1:.4f}")
         if self.task_type == 'multiclass':
             self.y_pred = np.argmax(y_prob, 1)
 

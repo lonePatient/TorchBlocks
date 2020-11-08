@@ -34,7 +34,7 @@ class SequenceLabelingTrainer(TrainerBase):
             self.save_predict_result(output_logits_file, self.records['preds'])
         self.print_evaluate_result()
         self.print_label_result(entity_value)
-        if 'cuda' in str(self.args.device):
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     def print_label_result(self, entity_value):
@@ -131,7 +131,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             self.save_predict_result(output_logits_file, self.records['preds'])
         self.print_evaluate_result()
         self.print_label_result(entity_value)
-        if 'cuda' in str(self.args.device):
+        if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     def predict(self, model, test_dataset, prefix=''):

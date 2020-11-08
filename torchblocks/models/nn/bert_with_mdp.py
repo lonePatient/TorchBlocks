@@ -4,10 +4,12 @@ from torch.nn import CrossEntropyLoss
 from transformers import BertModel, BertPreTrainedModel
 from torchblocks.models.layers.dropouts import MultiSampleDropout
 
+
 class BertWithMDP(BertPreTrainedModel):
     '''
     对每一层的[CLS]向量进行weight求和，以及添加multi-sample dropout
     '''
+
     def __init__(self, config):
         config.output_hidden_states = True
         super(BertWithMDP, self).__init__(config)
@@ -19,15 +21,12 @@ class BertWithMDP(BertPreTrainedModel):
         weights_init = torch.zeros(n_weights).float()
         weights_init.data[:-1] = -3
         self.layer_weights = torch.nn.Parameter(weights_init)
-        self.classifier = MultiSampleDropout(config.hidden_size, self.config.num_labels,K=5,p=0.5)
+        self.classifier = MultiSampleDropout(config.hidden_size, self.config.num_labels, K=5, p=0.5)
         self.init_weights()
 
     def forward(self, input_ids,
                 attention_mask=None,
                 token_type_ids=None,
-                position_ids=None,
-                head_mask=None,
-                inputs_embeds=None,
                 labels=None):
         outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         hidden_layers = outputs[2]
