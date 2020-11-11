@@ -1,6 +1,6 @@
 ## TorchBlocks
 
-A Pytorch ToolBox
+A PyTorch-based toolkit for natural language processing
 
 ## Installation
 
