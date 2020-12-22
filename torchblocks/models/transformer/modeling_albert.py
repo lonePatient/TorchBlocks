@@ -11,7 +11,7 @@ from torchblocks.models.transformer.configuration_albert import AlbertConfig
 
 from transformers.modeling_utils import PreTrainedModel, prune_linear_layer
 from transformers import add_start_docstrings
-from transformers.modeling_bert import (
+from transformers.models.bert.modeling_bert import (
                             BertSelfAttention,
                             BertIntermediate,
                             BertPooler,

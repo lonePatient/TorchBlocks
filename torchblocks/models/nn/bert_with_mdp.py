@@ -21,7 +21,7 @@ class BertWithMDP(BertPreTrainedModel):
         weights_init = torch.zeros(n_weights).float()
         weights_init.data[:-1] = -3
         self.layer_weights = torch.nn.Parameter(weights_init)
-        self.classifier = MultiSampleDropout(config.hidden_size, self.config.num_labels, K=5, p=0.5)
+        self.classifier = MultiSampleDropout(config.hidden_size, config.num_labels, K=5, p=0.5)
         self.init_weights()
 
     def forward(self, input_ids,

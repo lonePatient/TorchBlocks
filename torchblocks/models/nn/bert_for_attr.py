@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn import LayerNorm
 from torchblocks.models.layers.crf import CRF
 from torchblocks.models.layers.attentions import CosAttention
-from transformers.modeling_bert import BertPreTrainedModel, BertModel
+from transformers.models.bert import BertPreTrainedModel, BertModel
 
 
 class BertCRFForAttr(BertPreTrainedModel):

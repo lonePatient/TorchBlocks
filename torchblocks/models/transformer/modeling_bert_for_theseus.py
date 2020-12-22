@@ -11,10 +11,8 @@ from torch.nn import CrossEntropyLoss, MSELoss
 from torch.distributions.bernoulli import Bernoulli
 
 from transformers.modeling_utils import PreTrainedModel, prune_linear_layer
-from transformers.configuration_bert import BertConfig
-from transformers.modeling_bert import BERT_PRETRAINED_MODEL_ARCHIVE_MAP, load_tf_weights_in_bert, gelu, gelu_new, \
-    swish, mish, ACT2FN, BertLayerNorm, BertEmbeddings, BertSelfAttention, BertSelfOutput, BertAttention, \
-    BertIntermediate, BertOutput, BertLayer, BertPooler, BertPredictionHeadTransform, BertLMPredictionHead, \
+from transformers.models.bert.configuration_bert import BertConfig
+from transformers.models.bert.modeling_bert import load_tf_weights_in_bert, BertEmbeddings, BertLayer, BertPooler, \
     BertOnlyMLMHead, BertOnlyNSPHead, BertPreTrainingHeads
 
 logger = logging.getLogger(__name__)
@@ -79,7 +77,6 @@ class BertEncoder(nn.Module):
 
 class BertPreTrainedModel(PreTrainedModel):
     config_class = BertConfig
-    pretrained_model_archive_map = BERT_PRETRAINED_MODEL_ARCHIVE_MAP
     load_tf_weights = load_tf_weights_in_bert
     base_model_prefix = "bert"
 
@@ -89,11 +86,12 @@ class BertPreTrainedModel(PreTrainedModel):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
             module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
-        elif isinstance(module, BertLayerNorm):
+        elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
         if isinstance(module, nn.Linear) and module.bias is not None:
             module.bias.data.zero_()
+
 
 class BertModel(BertPreTrainedModel):
     def __init__(self, config):

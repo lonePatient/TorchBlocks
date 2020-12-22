@@ -17,7 +17,6 @@ class CNTokenizer(BertTokenizer):
                          **kwargs)
 
         self.vocab_file = str(vocab_file)
-        self.do_lower_case = do_lower_case
         self.delimiter = delimiter
         self.unk_token = unk_token
 

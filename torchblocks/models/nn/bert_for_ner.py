@@ -4,9 +4,8 @@ import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 from torchblocks.models.layers.crf import CRF
 from torchblocks.models.layers.linears import PoolerEndLogits, PoolerStartLogits
-from transformers import BertModel, BertPreTrainedModel
 from torchblocks.losses.span_loss import SpanLoss
-
+from transformers import BertModel, BertPreTrainedModel
 
 class BertSoftmaxForNer(BertPreTrainedModel):
     def __init__(self, config):
