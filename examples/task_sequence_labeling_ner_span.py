@@ -110,7 +110,7 @@ def main():
     # trainer
     logger.info("initializing traniner")
     trainer = SequenceLabelingSpanTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                                          batch_input_keys=processor.get_batch_keys(),
+                                          input_keys=processor.get_input_keys(),
                                           metrics=[SequenceLabelingScore(id2label, markup=args.markup, is_spans=True)])
     # do train
     if args.do_train:

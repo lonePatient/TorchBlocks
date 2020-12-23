@@ -41,18 +41,16 @@ class ColaProcessor(TextClassifierProcessor):
 
 
 class FreelbTrainer(TextClassifierTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
+    def __init__(self, args, metrics, logger, input_keys, collate_fn=None):
         super().__init__(args=args, metrics=metrics, logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
-
+                         input_keys=input_keys,collate_fn=collate_fn)
         self.adv_model = FreeLB(adv_K=args.adv_K, adv_lr=args.adv_lr,
                                 adv_init_mag=args.adv_init_mag,
                                 adv_norm_type=args.adv_norm_type,
                                 base_model=args.base_model,
                                 adv_max_norm=args.adv_max_norm)
 
-    def _train_step(self, model, batch, optimizer):
+    def train_step(self, model, batch, optimizer):
         model.train()
         inputs = self.build_inputs(batch)
         loss = self.adv_model.attack(model, inputs, gradient_accumulation_steps=self.args.gradient_accumulation_steps)
@@ -105,7 +103,7 @@ def main():
     # trainer
     logger.info("initializing traniner")
     trainer = FreelbTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                            batch_input_keys=processor.get_batch_keys(),
+                            input_keys=processor.get_input_keys(),
                             metrics=[MattewsCorrcoef()])
     # do train
     if args.do_train:

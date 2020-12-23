@@ -1,9 +1,9 @@
 import os
 import csv
+from torchblocks.models.nn import REBERT
 from torchblocks.metrics import F1Score, Accuracy
 from torchblocks.trainer import TextClassifierTrainer
 from torchblocks.callback import TrainLogger
-from torchblocks.models.nn import REBERT
 from torchblocks.processor import DataProcessor, InputExample, InputFeatures
 from torchblocks.utils import seed_everything, dict_to_text, build_argparse
 from torchblocks.utils import prepare_device, get_checkpoints
@@ -17,8 +17,12 @@ MODEL_CLASSES = {
 Enriching Pre-trained Language Model with Entity Information for Relation Classification
 '''
 
-
 class SemEvalProcessor(DataProcessor):
+
+    def __init__(self,data_dir,tokenizer,label_path,add_sep_token,prefix):
+        super(SemEvalProcessor, self).__init__(data_dir=data_dir, tokenizer=tokenizer,prefix=prefix)
+        self.label_path = label_path
+        self.add_sep_token = add_sep_token
 
     def get_labels(self):
         """See base class."""
@@ -43,7 +47,7 @@ class SemEvalProcessor(DataProcessor):
             examples.append(InputExample(guid=guid, texts=[text_a, None], label=label))
         return examples
 
-    def get_batch_keys(self):
+    def get_input_keys(self):
         return ['input_ids', 'attention_mask', 'token_type_ids', 'e1_mask', 'e2_mask', 'labels']
 
     def convert_to_features(self, examples, label_list, max_seq_length):
@@ -146,7 +150,7 @@ def main():
     # Trainer
     logger.info("initializing traniner")
     trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                                    batch_input_keys=processor.get_batch_keys(),
+                                    input_keys=processor.get_input_keys(),
                                     metrics=[F1Score(average='macro', task_type='multiclass'), Accuracy()])
     # do train
     if args.do_train:

@@ -47,13 +47,12 @@ class Sst2Processor(TextClassifierProcessor):
 
 
 class TheseusTrainer(TextClassifierTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys, replacing_rate_scheduler, collate_fn=None):
+    def __init__(self, args, metrics, logger, input_keys, replacing_rate_scheduler, collate_fn=None):
         super().__init__(args=args, metrics=metrics, logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
+                         input_keys=input_keys,collate_fn=collate_fn)
         self.replacing_rate_scheduler = replacing_rate_scheduler
 
-    def _train_update(self, model, optimizer, loss, scheduler):
+    def train_update(self, model, optimizer, loss, scheduler):
         '''
         Tranining update
         '''
@@ -116,12 +115,12 @@ def main():
         replacing_rate_scheduler = LinearReplacementScheduler(bert_encoder=model.bert.encoder,
                                                               base_replacing_rate=args.replacing_rate,
                                                               k=args.scheduler_linear_k)
-    elif args.scheduler_type == 'none':
+    else:
         replacing_rate_scheduler = ConstantReplacementScheduler(bert_encoder=model.bert.encoder,
                                                                 replacing_rate=args.replacing_rate,
                                                                 replacing_steps=args.steps_for_replacing)
     trainer = TheseusTrainer(logger=logger, args=args,
-                             batch_input_keys=processor.get_batch_keys(),
+                             input_keys=processor.get_input_keys(),
                              replacing_rate_scheduler=replacing_rate_scheduler,
                              collate_fn=processor.collate_fn,
                              metrics=[Accuracy()])

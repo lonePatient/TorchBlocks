@@ -28,8 +28,7 @@ class DataProcessor:
                  pad_to_max_length=True,
                  truncate_label=False,
                  truncation_strategy="longest_first",
-                 prefix='',
-                 **kwargs):
+                 prefix='',**kwargs):
         self.prefix = prefix
         self.data_dir = data_dir
         self.tokenizer = tokenizer
@@ -38,6 +37,7 @@ class DataProcessor:
         self.add_special_tokens = add_special_tokens
         self.pad_to_max_length = pad_to_max_length
         self.truncation_strategy = truncation_strategy
+
         for key, value in kwargs.items():
             setattr(self, key, value)
         if self.encode_mode not in ['one', 'pair', 'triple']:
@@ -72,7 +72,7 @@ class DataProcessor:
                                             pad_to_max_length=self.pad_to_max_length)
         return inputs
 
-    def get_batch_keys(self):
+    def get_input_keys(self):
         '''
         inputs输入对应的keys，需要跟模型输入对应
         '''
@@ -119,7 +119,7 @@ class DataProcessor:
         max_seq_len = torch.max(torch.sum(batch[1], 1)).item()
         num_inputs = len(batch)
         # test时一般label为None，所以导致keys_num!=input_keys_num
-        has_label = num_inputs == len(self.get_batch_keys())
+        has_label = num_inputs == len(self.get_input_keys())
         for i in range(num_inputs):
             if batch[i].dim()==1:
                 continue
@@ -196,7 +196,7 @@ class DataProcessor:
         '''
         features = self.load_from_cache(max_seq_length=max_seq_length, data_name=data_name, mode=mode)
         inputs = self.convert_to_tensors(features)
-        inputs_keys = self.get_batch_keys()
+        inputs_keys = self.get_input_keys()
         dataset = TensorDataset(*[inputs[key] for key in inputs_keys if inputs.get(key, None) is not None])
         return dataset
 

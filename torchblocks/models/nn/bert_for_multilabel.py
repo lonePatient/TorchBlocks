@@ -1,6 +1,6 @@
 import torch.nn as nn
-from transformers import BertPreTrainedModel, BertModel
 from torch.nn import BCEWithLogitsLoss
+from transformers import BertPreTrainedModel, BertModel
 
 
 class BertForMultiLable(BertPreTrainedModel):

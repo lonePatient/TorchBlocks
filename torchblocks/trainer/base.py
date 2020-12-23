@@ -45,12 +45,12 @@ if not is_tensorboard_available():
     from torchblocks.callback.file_writer import FileWriter
 
 
-class TrainerBase:
+class BaseTrainer:
     def __init__(self,
                  args,
                  metrics,
                  logger,
-                 batch_input_keys,
+                 input_keys,
                  prefix=None,
                  collate_fn=None,
                  scheduler_on_batch=True,
@@ -59,7 +59,7 @@ class TrainerBase:
         self.args = args
         self.metrics = metrics
         self.logger = logger
-        self.batch_input_keys = batch_input_keys
+        self.input_keys = input_keys
         self.scheduler_on_batch = scheduler_on_batch
         self.collate_fn = default_collate if collate_fn is None else collate_fn
         self.global_step = 0
@@ -82,14 +82,12 @@ class TrainerBase:
             raise ValueError(
                 "Parameter 'self.logger'  should be an instance of class `TrianLogger`. "
             )
-
         # tensorboard
         if is_tensorboard_available():
             self.tb_writer = SummaryWriter(log_dir=os.path.join(args.output_dir, f'{self.prefix}_tb_logs'))
             self.tb_writer.add_text("TrainArgs", to_json_string(args.__dict__))
         else:
             self.tb_writer = FileWriter(log_dir=os.path.join(args.output_dir, f'{self.prefix}_tb_logs'))
-
         # checkpoint
         self.model_checkpoint = ModelCheckpoint(
             mode=args.mcpt_mode,
@@ -97,7 +95,6 @@ class TrainerBase:
             checkpoint_dir=args.output_dir,
             save_best_only=args.do_save_best
         )
-
         # earlystopping
         if args.patience <= 0:
             self.early_stopping = None
@@ -144,7 +141,7 @@ class TrainerBase:
                           weight_decay=self.args.weight_decay)
         return optimizer
 
-    def build_scheduler(self, optimizer, t_total):
+    def build_lr_scheduler(self, optimizer, t_total):
         '''
         the learning rate scheduler.
         '''
@@ -161,7 +158,8 @@ class TrainerBase:
             raise ValueError("Trainer: training requires an train_dataset.")
         batch_size = self.args.per_gpu_train_batch_size * max(1, self.args.n_gpu)
         sampler = RandomSampler(train_dataset) if self.args.local_rank == -1 else DistributedSampler(train_dataset)
-        data_loader = DataLoader(train_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
+        data_loader = DataLoader(train_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn,
+                                 num_workers=self.args.num_workers)
         return data_loader
 
     def build_eval_dataloader(self, eval_dataset):
@@ -172,7 +170,8 @@ class TrainerBase:
             raise ValueError("Trainer: evaluation requires an eval_dataset.")
         batch_size = self.args.per_gpu_eval_batch_size * max(1, self.args.n_gpu)
         sampler = SequentialSampler(eval_dataset) if self.args.local_rank == -1 else DistributedSampler(eval_dataset)
-        data_loader = DataLoader(eval_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
+        data_loader = DataLoader(eval_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn,
+                                 num_workers=self.args.num_workers)
         return data_loader
 
     def build_test_dataloader(self, test_dataset):
@@ -183,7 +182,8 @@ class TrainerBase:
             raise ValueError("Trainer: evaluation requires an test_dataset.")
         batch_size = self.args.per_gpu_eval_batch_size * max(1, self.args.n_gpu)
         sampler = SequentialSampler(test_dataset) if self.args.local_rank == -1 else DistributedSampler(test_dataset)
-        data_loader = DataLoader(test_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn)
+        data_loader = DataLoader(test_dataset, sampler=sampler, batch_size=batch_size, collate_fn=self.collate_fn,
+                                 num_workers=self.args.num_workers)
         return data_loader
 
     def build_inputs(self, batch):
@@ -193,10 +193,10 @@ class TrainerBase:
          The inputs are in a dictionary format
         '''
         batch = tuple(t.to(self.args.device) for t in batch)
-        inputs = {key: value for key, value in zip(self.batch_input_keys, batch)}
+        inputs = {key: value for key, value in zip(self.input_keys, batch)}
         return inputs
 
-    def _train_step(self, model, batch, optimizer):
+    def train_step(self, model, batch, optimizer):
         '''
         Training step
         '''
@@ -213,7 +213,7 @@ class TrainerBase:
             loss.backward()
         return loss.item()
 
-    def _train_update(self, model, optimizer, loss, scheduler):
+    def train_update(self, model, optimizer, loss, scheduler):
         '''
         Tranining update
         '''
@@ -237,7 +237,7 @@ class TrainerBase:
         train_dataloader = self.build_train_dataloader(train_dataset)
         t_total = len(train_dataloader) // self.args.gradient_accumulation_steps * self.args.num_train_epochs
         optimizer = self.build_optimizer(model)
-        scheduler = self.build_scheduler(optimizer, t_total)
+        scheduler = self.build_lr_scheduler(optimizer, t_total)
         optimizer, scheduler = self.restore_optimizer(optimizer, scheduler)
         model, optimizer = self.build_apex_and_distribute(model, optimizer)
         # Train!
@@ -248,13 +248,17 @@ class TrainerBase:
             ema = EMA(model, decay=self.args.ema_decay)
         seed_everything(self.args.seed)  # Added here for reproductibility (even between python 2 and 3)
         print('Start training.')
+        if self.args.logging_steps < 0:
+            self.args.logging_steps = len(train_dataloader)
+        if self.args.save_steps < 0:
+            self.args.save_steps = len(train_dataloader)
         for epoch in range(0, int(self.args.num_train_epochs)):
             self.build_record_object()
             pbar = ProgressBar(n_total=len(train_dataloader), desc='Training')
             for step, batch in enumerate(train_dataloader):
-                loss = self._train_step(model, batch, optimizer)
+                loss = self.train_step(model, batch, optimizer)
                 if (step + 1) % self.args.gradient_accumulation_steps == 0:
-                    self._train_update(model, optimizer, loss, scheduler)
+                    self.train_update(model, optimizer, loss, scheduler)
                     if self.args.do_ema:
                         ema.update(model)
                     pbar(step, {'loss': loss})
@@ -376,8 +380,7 @@ class TrainerBase:
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(round(self.records['result'][key], 5)))
             name = key.split("_")[1] if "_" in key else key
-            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",
-                                      self.records['result'][key],
+            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",self.records['result'][key],
                                       int(self.global_step / self.args.logging_steps))
 
     def save_predict_result(self, file_name, data, file_dir=None):
@@ -399,7 +402,7 @@ class TrainerBase:
         Evaluate the model on a validation set
         '''
         eval_dataloader = self.build_eval_dataloader(eval_dataset)
-        self._predict_forward(model, eval_dataloader, do_eval=True)
+        self.predict_step(model, eval_dataloader, do_eval=True)
         if self.metrics:
             for metric in self.metrics:
                 metric.update(input=self.records['preds'], target=self.records['target'])
@@ -426,11 +429,11 @@ class TrainerBase:
         test数据集预测
         '''
         test_dataloader = self.build_test_dataloader(test_dataset)
-        self._predict_forward(model, test_dataloader, do_eval=False)
+        self.predict_step(model, test_dataloader, do_eval=False)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
         self.save_predict_result(file_name=output_logits_file, data=self.records['preds'])
 
-    def _predict_forward(self, model, data_loader, do_eval, **kwargs):
+    def predict_step(self, model, data_loader, do_eval, **kwargs):
         '''
         预测前向过程
         '''

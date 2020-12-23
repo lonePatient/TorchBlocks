@@ -159,7 +159,7 @@ def save_model(model, model_path):
 
 def load_model(model, model_path, key='state_dict'):
     '''
-    加载模型
+    load model
     :param model:
     :param model_name:
     :param model_path:

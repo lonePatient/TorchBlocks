@@ -5,13 +5,8 @@ from sklearn.metrics import confusion_matrix
 plt.switch_backend('agg')
 
 
-def plot_confusion_matrix(input,
-                          target,
-                          classes,
-                          save_path,
-                          normalize=False,
-                          title=None,
-                          cmap=plt.cm.Blues):
+def plot_confusion_matrix(input, target, classes, save_path,
+                          normalize=False, title=None, cmap=plt.cm.Blues):
     """
     This function prints and plots the confusion matrix.
     Normalization can be applied by setting `normalize=True`.
@@ -35,6 +30,7 @@ def plot_confusion_matrix(input,
         print("Normalized confusion matrix")
     else:
         print('Confusion matrix, without normalization')
+
     # --- plot--- #
     plt.rcParams['savefig.dpi'] = 200
     plt.rcParams['figure.dpi'] = 200
@@ -42,21 +38,21 @@ def plot_confusion_matrix(input,
     plt.rcParams.update({'font.size': 10})
     fig, ax = plt.subplots()
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+
     # --- bar --- #
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
     plt.colorbar(im, cax=cax)
+
     # --- bar --- #
     # ax.figure.colorbar(im, ax=ax)
     # We want to show all ticks...
     ax.set(xticks=np.arange(cm.shape[1]),
            yticks=np.arange(cm.shape[0]),
            # ... and label them with the respective list entries
-           xticklabels=classes, yticklabels=classes,
-           title=title,
-           ylabel='True label',
-           xlabel='Predicted label')
+           xticklabels=classes, yticklabels=classes,title=title,
+           ylabel='True label',xlabel='Predicted label')
 
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")

@@ -47,14 +47,13 @@ class ColaProcessor(TextClassifierProcessor):
 
 
 class SDATrainer(TextClassifierTrainer):
-    def __init__(self, args, metrics, logger, kd_model, kd_loss_fct, batch_input_keys, collate_fn=None):
+    def __init__(self, args, metrics, logger, kd_model, kd_loss_fct, input_keys, collate_fn=None):
         super().__init__(args=args, metrics=metrics, logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
+                         input_keys=input_keys,collate_fn=collate_fn)
         self.kd_model = kd_model
         self.kd_loss_fct = kd_loss_fct
 
-    def _train_step(self, model, batch, optimizer):
+    def train_step(self, model, batch, optimizer):
         model.train()
         inputs = self.build_inputs(batch)
         outputs = model(**inputs)
@@ -70,7 +69,7 @@ class SDATrainer(TextClassifierTrainer):
         loss.backward()
         return loss.item()
 
-    def _train_update(self, model, optimizer, loss, scheduler):
+    def train_update(self, model, optimizer, loss, scheduler):
         torch.nn.utils.clip_grad_norm_(model.parameters(), self.args.max_grad_norm)
         optimizer.step()
         if self.scheduler_on_batch:
@@ -120,10 +119,11 @@ def main():
                                           cache_dir=args.cache_dir if args.cache_dir else None)
     model = model_class.from_pretrained(args.model_path, config=config)
     model.to(args.device)
+
     # trainer
     logger.info("initializing traniner")
     trainer = SDATrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                         batch_input_keys=processor.get_batch_keys(),
+                         input_keys=processor.get_input_keys(),
                          kd_model=copy.deepcopy(model),
                          kd_loss_fct=MSELoss(),
                          metrics=[MattewsCorrcoef()])

@@ -1,14 +1,14 @@
 import torch
-from torchblocks.trainer.base import TrainerBase
+from torchblocks.trainer.base import BaseTrainer
 from torchblocks.callback import ProgressBar
 from torchblocks.utils.tensor import tensor_to_cpu
 
 
-class TextClassifierTrainer(TrainerBase):
+class TextClassifierTrainer(BaseTrainer):
     '''
     文本分类
     '''
-    def _predict_forward(self, model, data_loader, do_eval, **kwargs):
+    def predict_step(self, model, data_loader, do_eval, **kwargs):
         self.build_record_object()
         pbar = ProgressBar(n_total=len(data_loader), desc='Evaluating' if do_eval else 'Predicting')
         for step, batch in enumerate(data_loader):

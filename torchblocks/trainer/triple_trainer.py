@@ -1,15 +1,15 @@
 import torch
-from torchblocks.trainer.base import TrainerBase
 from torchblocks.callback import ProgressBar
+from torchblocks.trainer.base import BaseTrainer
 from torchblocks.utils.tensor import tensor_to_cpu
 from torchblocks.losses.triplet_loss import DISTANCE2METRIC
 
 
-class TripleTrainer(TrainerBase):
+class TripleTrainer(BaseTrainer):
     '''
     triple 分类
     '''
-    def _predict_forward(self, model, data_loader, do_eval, **kwargs):
+    def predict_step(self, model, data_loader, do_eval, **kwargs):
         self.build_record_object()
         pbar = ProgressBar(n_total=len(data_loader), desc='Evaluating' if do_eval else 'Predicting')
         for step, batch in enumerate(data_loader):
@@ -27,7 +27,6 @@ class TripleTrainer(TrainerBase):
                     logits = outputs[1]
                 else:
                     logits = outputs[0]
-
             anchor, positive, negative = logits
             distance_metric = DISTANCE2METRIC[self.args.distance_metric]
             distance_positive = distance_metric(anchor, positive)
@@ -35,7 +34,6 @@ class TripleTrainer(TrainerBase):
             diff_dist = 1 - (distance_positive > distance_negative).int()
             self.records['preds'].append(tensor_to_cpu(diff_dist))
             pbar(step)
-
         self.records['preds'] = torch.cat(self.records['preds'], dim=0)
         if do_eval:
             self.records['target'] = torch.cat(self.records['target'], dim=0)

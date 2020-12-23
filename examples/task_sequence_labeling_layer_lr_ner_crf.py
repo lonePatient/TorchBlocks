@@ -71,10 +71,9 @@ class CnerProcessor(SequenceLabelingProcessor):
 
 
 class LayerLRTrainer(SequenceLabelingTrainer):
-    def __init__(self, args, metrics, logger, batch_input_keys, collate_fn=None):
+    def __init__(self, args, metrics, logger, input_keys, collate_fn=None):
         super().__init__(args=args, metrics=metrics, logger=logger,
-                         batch_input_keys=batch_input_keys,
-                         collate_fn=collate_fn)
+                         input_keys=input_keys,collate_fn=collate_fn)
 
     def build_optimizers(self, model):
         '''
@@ -147,7 +146,7 @@ def main():
     # trainer
     logger.info("initializing traniner")
     trainer = LayerLRTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                             batch_input_keys=processor.get_batch_keys(),
+                             input_keys=processor.get_input_keys(),
                              metrics=[SequenceLabelingScore(id2label, markup=args.markup)])
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.char.bmes', 'train')

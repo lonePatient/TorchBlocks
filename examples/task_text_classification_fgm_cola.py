@@ -42,7 +42,7 @@ class ColaProcessor(TextClassifierProcessor):
 
 class FGMTrainer(TextClassifierTrainer):
 
-    def _train_step(self, model, batch, optimizer):
+    def train_step(self, model, batch, optimizer):
         fgm_model = FGM(model, emb_name=self.args.adv_name, epsilon=self.args.adv_epsilon)
         model.train()
         inputs = self.build_inputs(batch)
@@ -99,7 +99,7 @@ def main():
     # trainer
     logger.info("initializing traniner")
     trainer = FGMTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                         batch_input_keys=processor.get_batch_keys(),
+                         input_keys=processor.get_input_keys(),
                          metrics=[MattewsCorrcoef()])
     if args.do_train:
         train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.tsv', 'train')

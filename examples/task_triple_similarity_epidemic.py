@@ -78,7 +78,7 @@ def main():
     # trainer
     logger.info("initializing traniner")
     trainer = TripleTrainer(logger=logger, args=args, metrics=[Accuracy()],
-                            batch_input_keys=processor.get_batch_keys(),
+                            input_keys=processor.get_input_keys(),
                             collate_fn=processor.collate_fn)
     # do train
     if args.do_train:
@@ -112,7 +112,6 @@ def main():
             model = model_class.from_pretrained(checkpoint)
             model.to(args.device)
             trainer.predict(model, test_dataset=test_dataset, prefix=str(global_step))
-
 
 if __name__ == "__main__":
     main()

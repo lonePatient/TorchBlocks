@@ -1,18 +1,18 @@
 import torch
 import torch.nn as nn
-from torchblocks.trainer.base import TrainerBase
+from torchblocks.trainer.base import BaseTrainer
 from torchblocks.callback import ProgressBar
 from torchblocks.metrics.utils import get_spans
 from torchblocks.utils.tensor import tensor_to_list
 
 
-class SequenceLabelingTrainer(TrainerBase):
+class SequenceLabelingTrainer(BaseTrainer):
     '''
     Sequence Labeling crf or softmax Trainer
     '''
     def evaluate(self, model, eval_dataset, save_preds=False, prefix=''):
         eval_dataloader = self.build_eval_dataloader(eval_dataset)
-        self._predict_forward(model, eval_dataloader, do_eval=True)
+        self.predict_step(model, eval_dataloader, do_eval=True)
         for i, label in enumerate(self.records['target']):
             temp_1 = []
             temp_2 = []
@@ -25,7 +25,6 @@ class SequenceLabelingTrainer(TrainerBase):
                 else:
                     temp_1.append(self.records['target'][i][j])
                     temp_2.append(self.records['preds'][i][j])
-
         value, entity_value = self.metrics[0].value()
         self.records['result']['eval_loss'] = self.records['loss_meter'].avg
         self.records['result'].update({f"eval_{k}": v for k, v in value.items()})
@@ -46,7 +45,7 @@ class SequenceLabelingTrainer(TrainerBase):
 
     def predict(self, model, test_dataset, prefix=''):
         test_dataloader = self.build_test_dataloader(test_dataset)
-        self._predict_forward(model, test_dataloader, do_eval=False)
+        self.predict_step(model, test_dataloader, do_eval=False)
         results = []
         for i, pred in enumerate(self.records['preds']):
             pred = pred[:self.records['input_lens'][i]][1:-1]  # [CLS]XXXX[SEP]
@@ -57,11 +56,11 @@ class SequenceLabelingTrainer(TrainerBase):
             json_d['entities'] = entity_spans
             results.append(json_d)
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
-        self.save_predict_result(output_predict_file, results, self.args.output_dir)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
+        self.save_predict_result(output_predict_file, results, self.args.output_dir)
         self.save_predict_result(output_logits_file, self.records['preds'], self.args.output_dir)
 
-    def _predict_forward(self, model, data_loader, do_eval=True, **kwargs):
+    def predict_step(self, model, data_loader, do_eval=True, **kwargs):
         self.build_record_object()
         pbar = ProgressBar(n_total=len(data_loader), desc='Evaluating' if do_eval else 'Predicting')
         for step, batch in enumerate(data_loader):
@@ -88,7 +87,7 @@ class SequenceLabelingTrainer(TrainerBase):
             pbar(step)
 
 
-class SequenceLabelingSpanTrainer(TrainerBase):
+class SequenceLabelingSpanTrainer(BaseTrainer):
     '''
     Sequence Labeling Span Trainer
     '''
@@ -114,7 +113,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
 
     def evaluate(self, model, eval_dataset, save_preds=False, prefix=''):
         eval_dataloader = self.build_eval_dataloader(eval_dataset)
-        self._predict_forward(model, eval_dataloader, do_eval=True)
+        self.predict_step(model, eval_dataloader, do_eval=True)
         for i in range(len(self.records['preds'])):
             length = self.records['input_lens'][i]
             start_logits, end_logits = self.records['preds'][i]
@@ -136,7 +135,7 @@ class SequenceLabelingSpanTrainer(TrainerBase):
 
     def predict(self, model, test_dataset, prefix=''):
         test_dataloader = self.build_test_dataloader(test_dataset)
-        self._predict_forward(model, test_dataloader, do_eval=False)
+        self.predict_step(model, test_dataloader, do_eval=False)
         results = []
         for i, (start_logits, end_logits) in enumerate(self.records['preds']):
             length = self.records['input_lens'][i]
@@ -147,14 +146,13 @@ class SequenceLabelingSpanTrainer(TrainerBase):
             json_d['id'] = i
             json_d['entities'] = entity_spans
             results.append(json_d)
-
         output_predict_file = f"{self.prefix + prefix}_predict_test.json"
-        self.save_predict_result(output_predict_file, results)
         output_logits_file = f"{self.prefix + prefix}_predict_test_logits.pkl"
+        self.save_predict_result(output_predict_file, results)
         self.save_predict_result(output_logits_file, self.records['preds'])
         return results
 
-    def _predict_forward(self, model, data_loader, do_eval=True, **kwargs):
+    def predict_step(self, model, data_loader, do_eval=True, **kwargs):
         self.build_record_object()
         pbar = ProgressBar(n_total=len(data_loader), desc='Evaluating' if do_eval else 'Predicting')
         for step, batch in enumerate(data_loader):
@@ -173,7 +171,6 @@ class SequenceLabelingSpanTrainer(TrainerBase):
                     _, start_logits, end_logits = outputs[:3]
                 else:
                     start_logits, end_logits = outputs[:2]
-
             start_logits = tensor_to_list(torch.argmax(start_logits, -1))
             end_logits = tensor_to_list(torch.argmax(end_logits, -1))
             self.records['preds'].extend(zip(start_logits, end_logits))

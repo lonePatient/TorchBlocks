@@ -75,7 +75,7 @@ def main():
     # Trainer
     logger.info("initializing traniner")
     trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                                    batch_input_keys=processor.get_batch_keys(),
+                                    input_keys=processor.get_input_keys(),
                                     metrics=[AUC(average='micro', task_type='binary'),
                                              MultiLabelReport(id2label)])
     # do train
