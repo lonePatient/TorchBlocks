@@ -196,6 +196,10 @@ class BaseTrainer:
         inputs = {key: value for key, value in zip(self.input_keys, batch)}
         return inputs
 
+    def check_nan(self, loss):
+        if torch.isnan(loss):
+            raise ValueError('Training loss is nan')
+
     def train_step(self, model, batch, optimizer):
         '''
         Training step
@@ -205,6 +209,7 @@ class BaseTrainer:
         outputs = model(**inputs)
         loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
         loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        self.check_nan(loss)
         loss = loss / self.args.gradient_accumulation_steps
         if self.args.fp16:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -438,4 +443,4 @@ class BaseTrainer:
         预测前向过程
         '''
         self.build_record_object()
-        raise NotImplementedError
+        raise NotImplementedError('Method [predict_step] should be implemented.')

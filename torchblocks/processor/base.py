@@ -22,13 +22,8 @@ class DataProcessor:
         truncate_label: 是否label进行阶段，主要在collect_fn函数中，一般针对sequence labeling任务中，default: False
     """
 
-    def __init__(self, data_dir, tokenizer,
-                 encode_mode='one',
-                 add_special_tokens=True,
-                 pad_to_max_length=True,
-                 truncate_label=False,
-                 truncation_strategy="longest_first",
-                 prefix='',**kwargs):
+    def __init__(self, data_dir, tokenizer, encode_mode='one', add_special_tokens=True, pad_to_max_length=True,
+                 truncate_label=False, truncation_strategy="longest_first", prefix='', **kwargs):
         self.prefix = prefix
         self.data_dir = data_dir
         self.tokenizer = tokenizer
@@ -121,9 +116,9 @@ class DataProcessor:
         # test时一般label为None，所以导致keys_num!=input_keys_num
         has_label = num_inputs == len(self.get_input_keys())
         for i in range(num_inputs):
-            if batch[i].dim()==1:
+            if batch[i].dim() == 1:
                 continue
-            if i == num_inputs - 1 and has_label:# 最后一个是否为label
+            if i == num_inputs - 1 and has_label:  # 最后一个是否为label
                 if self.truncate_label:
                     batch[i] = batch[i][:, :max_seq_len]
             else:
@@ -230,19 +225,16 @@ class DataProcessor:
         '''
         创建exmaples
         '''
-        raise NotImplementedError()
+        raise NotImplementedError('Method [create_examples] should be implemented.')
 
     def read_data(self, input_file):
         '''
         读取数据
         '''
-        raise NotImplementedError()
+        raise NotImplementedError('Method [read_data] should be implemented.')
 
     def get_labels(self):
         """
         标签列表
         """
-        raise NotImplementedError()
-
-
-
+        raise NotImplementedError('Method [get_labels] should be implemented.')

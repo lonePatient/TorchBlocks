@@ -3,12 +3,22 @@ import time
 import json
 import random
 import torch
+import datetime
 import numpy as np
 import logging
 from typing import Dict
 
 logger = logging.getLogger(__name__)
 
+def get_local_time():
+    r"""Get current time
+    Returns:
+        str: current time
+    """
+    cur = datetime.datetime.now()
+    cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
+
+    return cur
 
 def print_config(config):
     '''
@@ -40,17 +50,12 @@ def _select_seed_randomly(min_seed_value=0, max_seed_value=255):
     return seed
 
 
-def seed_everything(seed=None, deterministic_cudnn=False):
+def seed_everything(seed=None, reproducibility=True):
     '''
-    Setting multiple seeds to make runs reproducible.
-
-    Important: Enabling `deterministic_cudnn` gives you full reproducibility with CUDA,
-    but might slow down your training (see https://pytorch.org/docs/stable/notes/randomness.html#cudnn) !
-    :param seed:number to use as seed
-    :type seed: int
-    :param deterministic_torch: Enable for full reproducibility when using CUDA. Caution: might slow down training.
-    :type deterministic_cudnn: bool
-    :return: None
+    init random seed for random functions in numpy, torch, cuda and cudnn
+    Args:
+        seed (int): random seed
+        reproducibility (bool): Whether to require reproducibility
     '''
     if seed is None:
         seed = int(_select_seed_randomly())
@@ -60,9 +65,12 @@ def seed_everything(seed=None, deterministic_cudnn=False):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    if deterministic_cudnn:
-        torch.backends.cudnn.deterministic = True
+    if reproducibility:
         torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+    else:
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.deterministic = False
 
 
 class AverageMeter(object):
@@ -115,12 +123,12 @@ def prepare_device(use_gpu, local_rank=-1):
         use_gpu = '0,1' : cuda:0 and cuda:1
      """
     if local_rank == -1:
+        n_gpu = torch.cuda.device_count()
         n_gpu_use = [int(x) for x in use_gpu.split(",")]
         if len(n_gpu_use) == 0:
             device_type = 'cpu'
         else:
             device_type = f"cuda:{n_gpu_use[0]}"
-        n_gpu = torch.cuda.device_count()
         if len(n_gpu_use) > 0 and n_gpu == 0:
             logger.warning("Warning: There\'s no GPU available on this machine, training will be performed on CPU.")
             device_type = 'cpu'

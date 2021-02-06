@@ -7,6 +7,7 @@ from torchblocks.models.layers.linears import PoolerEndLogits, PoolerStartLogits
 from torchblocks.losses.span_loss import SpanLoss
 from transformers import BertModel, BertPreTrainedModel
 
+
 class BertSoftmaxForNer(BertPreTrainedModel):
     def __init__(self, config):
         super(BertSoftmaxForNer, self).__init__(config)

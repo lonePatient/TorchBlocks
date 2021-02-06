@@ -18,6 +18,12 @@ class LabelSmoothingCE(nn.Module):
             loss = -log_preds.sum(dim=-1)
             if self.reduction == 'mean':
                 loss = loss.mean()
-        return loss * self.eps / c + (1 - self.eps) * F.nll_loss(log_preds, target,
-                                                                 reduction=self.reduction,
-                                                                 ignore_index=self.ignore_index)
+        loss_1 = loss * self.eps / c
+        loss_2 = F.nll_loss(log_preds, target, reduction=self.reduction, ignore_index=self.ignore_index)
+        return loss_1 + (1 - self.eps) * loss_2
+
+
+
+
+
+

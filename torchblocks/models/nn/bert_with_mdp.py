@@ -9,7 +9,6 @@ class BertWithMDP(BertPreTrainedModel):
     '''
     对每一层的[CLS]向量进行weight求和，以及添加multi-sample dropout
     '''
-
     def __init__(self, config):
         config.output_hidden_states = True
         super(BertWithMDP, self).__init__(config)

@@ -6,16 +6,9 @@ class CNTokenizer(BertTokenizer):
     '''
     完成基于char形式
     '''
-    def __init__(self,
-                 vocab_file,
-                 delimiter='',  # 分隔符
-                 unk_token='[UNK]',
-                 do_lower_case=False,
-                 **kwargs):
-        super().__init__(vocab_file=str(vocab_file),
-                         do_lower_case=do_lower_case,
-                         **kwargs)
-
+    def __init__(self, vocab_file, delimiter='',  # 分隔符
+                 unk_token='[UNK]', do_lower_case=False, **kwargs):
+        super().__init__(vocab_file=str(vocab_file), do_lower_case=do_lower_case, **kwargs)
         self.vocab_file = str(vocab_file)
         self.delimiter = delimiter
         self.unk_token = unk_token

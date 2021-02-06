@@ -1,9 +1,9 @@
 import os
 import time
 import logging
-from collections import defaultdict
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from collections import defaultdict
 from ..utils.paths import save_json,ensure_dir
 plt.switch_backend('agg')  # 防止ssh上绘图问题
 

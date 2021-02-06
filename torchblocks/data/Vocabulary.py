@@ -1,9 +1,11 @@
 import os
 import logging
 from collections import Counter, OrderedDict
+
 logger = logging.getLogger(__name__)
 
 VOCAB_NAME = "vocab.txt"
+
 
 class Vocabulary(object):
     def __init__(self,
@@ -23,11 +25,11 @@ class Vocabulary(object):
         self.pad_token = pad_token
         self.mask_token = mask_token
         self.unk_token = unk_token
-        self.tokens_to_ids = OrderedDict()
-        self.ids_to_tokens = OrderedDict()
         self.rebuild = True
         self.add_unused = add_unused
         self.word_counter = Counter()
+        self.tokens_to_ids = OrderedDict()
+        self.ids_to_tokens = OrderedDict()
 
     def reset(self):
         ctrl_symbols = [self.pad_token, self.unk_token, self.cls_token, self.sep_token, self.mask_token]
