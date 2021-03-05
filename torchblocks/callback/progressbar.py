@@ -57,7 +57,7 @@ class ProgressBar(object):
         now = time.time()
         current = step + 1
         bar = self._bar(now, current)
-        show_bar = f"\r{bar}" + self._time_info(now, current):
+        show_bar = f"\r{bar}" + self._time_info(now, current)
         if len(info) != 0:
             show_bar = f'{show_bar} ' + " [" + "-".join(
                 [f' {key}={value:.4f} ' for key, value in info.items()]) + "]"
