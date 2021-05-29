@@ -186,6 +186,17 @@ class BaseTrainer:
                                  num_workers=self.args.num_workers)
         return data_loader
 
+    def freeze_to(self, n, model):
+        """Freeze first n layers of model
+        * **n** - Starting from initial layer, freeze all layers up to nth layer inclusively
+        """
+        layers = list(model.parameters())
+        # Freeze up to n layers
+        for param in layers[:n]:
+            param.requires_grad = False
+        for param in layers[n:]:
+            param.requires_grad = True
+
     def build_inputs(self, batch):
         '''
         Sent all model inputs to the appropriate device (GPU on CPU)
@@ -208,9 +219,11 @@ class BaseTrainer:
         inputs = self.build_inputs(batch)
         outputs = model(**inputs)
         loss = outputs[0]  # model outputs are always tuple in transformers (see doc)
-        loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        if self.args.n_gpu > 1:
+            loss = loss.mean()  # mean() to average on multi-gpu parallel training
         self.check_nan(loss)
-        loss = loss / self.args.gradient_accumulation_steps
+        if self.args.gradient_accumulation_steps > 1:
+            loss = loss / self.args.gradient_accumulation_steps
         if self.args.fp16:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
@@ -257,9 +270,11 @@ class BaseTrainer:
             self.args.logging_steps = len(train_dataloader)
         if self.args.save_steps < 0:
             self.args.save_steps = len(train_dataloader)
+        pbar = ProgressBar(n_total=len(train_dataloader), desc='Training', num_epochs=self.args.num_train_epochs)
         for epoch in range(0, int(self.args.num_train_epochs)):
             self.build_record_object()
-            pbar = ProgressBar(n_total=len(train_dataloader), desc='Training')
+            pbar.reset()
+            pbar.epoch_start(current_epoch=epoch)
             for step, batch in enumerate(train_dataloader):
                 loss = self.train_step(model, batch, optimizer)
                 if (step + 1) % self.args.gradient_accumulation_steps == 0:
@@ -385,7 +400,7 @@ class BaseTrainer:
         for key in sorted(self.records['result'].keys()):
             self.logger.info("  %s = %s", key, str(round(self.records['result'][key], 5)))
             name = key.split("_")[1] if "_" in key else key
-            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}",self.records['result'][key],
+            self.tb_writer.add_scalar(f"{name[0].upper() + name[1:]}/{key}", self.records['result'][key],
                                       int(self.global_step / self.args.logging_steps))
 
     def save_predict_result(self, file_name, data, file_dir=None):

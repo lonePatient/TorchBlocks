@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 setup(
     name="torchblocks",
-    version="1.0.0",
+    version="0.0.4",
     author="lonePatient",
     author_email="liuweitangmath@163.com",
     description="A PyTorch-based toolkit for natural language processing",

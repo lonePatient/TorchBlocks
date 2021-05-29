@@ -10,6 +10,9 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
+def get_files(directory):
+    directory = os.path.expanduser(directory)
+    return [os.path.join(directory, fname) for fname in os.listdir(directory)]
 
 def check_dir(d):
     if not os.path.exists(d):
@@ -47,6 +50,7 @@ def get_checkpoints(output_dir, checkpoint_number, weight_name):
         raise ValueError('You need to save some checkpoints of model')
     if checkpoint_number > 0:
         checkpoints = [x for x in checkpoints if x.split('-')[-1] == str(checkpoint_number)]
+        print("Successfully loaded checkpoints.")
     return checkpoints
 
 
@@ -174,29 +178,3 @@ def load_model(model, model_path, key='state_dict'):
     else:
         model.load_state_dict(state)
     return model
-
-
-def create_unique_dir(config, args):
-    time_ = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-    new_dir = os.path.join(args.output_dir, time_)
-    for name in [config.model_path, config.initializer_range, config.learning_rate,
-                 config.num_train_epochs, config.adam_epsilon, config.max_grad_norm,
-                 ]:
-        new_dir += f'_{name}'
-    new_dir += f'_{config.per_gpu_train_batch_size * config.gradient_accumulation_steps}'
-    try:
-        new_dir += f'_hdp_{config.hidden_dropout_prob}'
-        new_dir += f'_adp_{config.attention_probs_dropout_prob}'
-    except AttributeError:
-        pass
-    if config.weight_decay >= 0.0:
-        new_dir += f'_wd_{config.weight_decay}'
-
-    if config.warmup_steps > 0:
-        new_dir += f'_wup_{config.warmup_steps}'
-
-    if config.fp16:
-        new_dir += f'_fp16_{config.fp16_opt_level}'
-    new_dir += f'_{args.seed}'
-    ensure_dir(new_dir)
-    return new_dir

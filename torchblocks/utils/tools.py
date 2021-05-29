@@ -17,7 +17,6 @@ def get_local_time():
     """
     cur = datetime.datetime.now()
     cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
-
     return cur
 
 def print_config(config):
@@ -82,6 +81,7 @@ class AverageMeter(object):
         self.reset()
 
     def reset(self):
+        """Method to reset all the internal variables."""
         self.val = 0
         self.avg = 0
         self.sum = 0
@@ -147,39 +147,3 @@ def prepare_device(use_gpu, local_rank=-1):
     logger.warning("Process rank: %s, device: %s, n_gpu: %s, distributed training: %s",
                    local_rank, device, n_gpu, bool(local_rank != -1))
     return device, n_gpu
-
-
-class Timer(object):
-    """
-    Record multiple running times.
-        c = torch.zeros(n)
-        timer = Timer()
-        for i in range(n):
-            c[i] = a[i] + b[i]
-        f'{timer.stop():.5f} sec'
-    """
-
-    def __init__(self):
-        self.times = []
-        self.start()
-
-    def start(self):
-        """Start the timer."""
-        self.tik = time.time()
-
-    def stop(self):
-        """Stop the timer and record the time in a list."""
-        self.times.append(time.time() - self.tik)
-        return self.times[-1]
-
-    def avg(self):
-        """Return the average time."""
-        return sum(self.times) / len(self.times)
-
-    def sum(self):
-        """Return the sum of time."""
-        return sum(self.times)
-
-    def cumsum(self):
-        """Return the accumulated times."""
-        return np.array(self.times).cumsum().tolist()

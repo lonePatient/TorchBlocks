@@ -11,11 +11,17 @@ class ProgressBar(object):
         >>> pbar(step=step,info={'loss':20})
     '''
 
-    def __init__(self, n_total, width=30, desc='Training'):
+    def __init__(self, n_total, width=30, desc='Training',num_epochs = None):
+
         self.width = width
         self.n_total = n_total
-        self.start_time = time.time()
         self.desc = desc
+        self.start_time = time.time()
+        self.num_epochs = num_epochs
+
+    def reset(self):
+        """Method to reset internal variables."""
+        self.start_time = time.time()
 
     def _time_info(self, now, current):
         time_per_unit = (now - self.start_time) / current
@@ -53,6 +59,12 @@ class ProgressBar(object):
         bar += ']'
         return bar
 
+    def epoch_start(self,current_epoch):
+        sys.stdout.write("\n")
+        if (current_epoch is not None) and (self.num_epochs is not None):
+            sys.stdout.write(f"Epoch: {current_epoch}/{self.num_epochs}")
+            sys.stdout.write("\n")
+
     def __call__(self, step, info={}):
         now = time.time()
         current = step + 1
@@ -61,7 +73,8 @@ class ProgressBar(object):
         if len(info) != 0:
             show_bar = f'{show_bar} ' + " [" + "-".join(
                 [f' {key}={value:.4f} ' for key, value in info.items()]) + "]"
+        if current >= self.n_total:
+            show_bar += '\n'
         sys.stdout.write(show_bar)
         sys.stdout.flush()
-        if current == self.n_total:
-            print(" ")
+

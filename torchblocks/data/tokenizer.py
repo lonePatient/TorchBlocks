@@ -4,7 +4,7 @@ from transformers import BertTokenizer
 
 class CNTokenizer(BertTokenizer):
     '''
-    完成基于char形式
+    基于char形式
     '''
     def __init__(self, vocab_file, delimiter='',  # 分隔符
                  unk_token='[UNK]', do_lower_case=False, **kwargs):

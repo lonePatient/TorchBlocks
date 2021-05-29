@@ -17,7 +17,7 @@ def number_to_tensor(number):
 def tensor_to_cpu(tensor):
     if not isinstance(tensor, torch.Tensor):
         raise ValueError("tensor type: expected one of (torch.Tensor)")
-    return tensor.cpu().detach()
+    return tensor.detach().cpu()
 
 
 def tensor_to_numpy(tensor):
