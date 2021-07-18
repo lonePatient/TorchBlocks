@@ -1,5 +1,4 @@
 import os
-import time
 import json
 import random
 import torch
@@ -43,12 +42,6 @@ def to_json_string(data: Dict):
     return json.dumps(data, indent=2, sort_keys=True, cls=_Encoder)
 
 
-def _select_seed_randomly(min_seed_value=0, max_seed_value=255):
-    seed = random.randint(min_seed_value, max_seed_value)
-    logger.warning(f"No correct seed found, seed set to {seed}")
-    return seed
-
-
 def seed_everything(seed=None, reproducibility=True):
     '''
     init random seed for random functions in numpy, torch, cuda and cudnn
@@ -56,6 +49,10 @@ def seed_everything(seed=None, reproducibility=True):
         seed (int): random seed
         reproducibility (bool): Whether to require reproducibility
     '''
+    def _select_seed_randomly(min_seed_value=0, max_seed_value=255):
+        seed = random.randint(min_seed_value, max_seed_value)
+        logger.warning(f"No correct seed found, seed set to {seed}")
+        return seed
     if seed is None:
         seed = int(_select_seed_randomly())
     random.seed(seed)

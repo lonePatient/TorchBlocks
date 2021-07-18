@@ -1,6 +1,6 @@
 from collections import Counter
 from torchblocks.metrics.base import Metric
-from torchblocks.metrics.utils import *
+from torchblocks.metrics.utils_ner import *
 
 
 class SequenceLabelingScore(Metric):

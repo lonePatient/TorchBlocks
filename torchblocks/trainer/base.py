@@ -5,9 +5,7 @@ from argparse import Namespace
 from torch.utils.data.dataloader import DataLoader, default_collate
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-
-from torchblocks.optims import AdamW
-from torchblocks.optims.lr_scheduler import get_linear_schedule_with_warmup
+from transformers import AdamW,get_linear_schedule_with_warmup
 
 from torchblocks.utils.paths import save_pickle, json_to_text
 from torchblocks.utils.tools import seed_everything, AverageMeter, to_json_string
@@ -15,19 +13,16 @@ from torchblocks.callback import ModelCheckpoint, EarlyStopping, ProgressBar, Tr
 
 try:
     from apex import amp
-
     _has_apex = True
 except ImportError:
     _has_apex = False
 
 try:
     from torch.utils.tensorboard import SummaryWriter
-
     _has_tensorboard = True
 except ImportError:
     try:
         from tensorboardX import SummaryWriter
-
         _has_tensorboard = True
     except ImportError:
         _has_tensorboard = False
@@ -54,7 +49,7 @@ class BaseTrainer:
                  prefix=None,
                  collate_fn=None,
                  scheduler_on_batch=True,
-                 **kwargs):  # 增加新参数
+                 **kwargs):
 
         self.args = args
         self.metrics = metrics
@@ -146,7 +141,8 @@ class BaseTrainer:
         the learning rate scheduler.
         '''
         warmup_steps = int(t_total * self.args.warmup_proportion)
-        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=warmup_steps,
+        scheduler = get_linear_schedule_with_warmup(optimizer=optimizer,
+                                                    num_warmup_steps=warmup_steps,
                                                     num_training_steps=t_total)
         return scheduler
 
@@ -265,7 +261,6 @@ class BaseTrainer:
         if self.args.do_ema:
             ema = EMA(model, decay=self.args.ema_decay)
         seed_everything(self.args.seed)  # Added here for reproductibility (even between python 2 and 3)
-        print('Start training.')
         if self.args.logging_steps < 0:
             self.args.logging_steps = len(train_dataloader)
         if self.args.save_steps < 0:

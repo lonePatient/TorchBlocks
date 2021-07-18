@@ -1,8 +1,8 @@
 import os
 import torch
-import numpy as np
 import logging
-from ..utils.paths import ensure_dir
+import numpy as np
+from torchblocks.utils.paths import ensure_dir
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class ModelCheckpoint(object):
     save_best_only: When `True`, always saves the best score model to a file `checpoint-best`. Default: ``False``.
     '''
 
-    def __init__(self, checkpoint_dir, monitor='eval_loss', mode='min', save_best_only=False, verbose=False):
+    def __init__(self, checkpoint_dir, monitor='eval_loss', mode='min', save_best_only=False, verbose=True):
 
         ensure_dir(checkpoint_dir)
         self.monitor = monitor

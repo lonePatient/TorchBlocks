@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 setup(
     name="torchblocks",
-    version="0.0.4",
+    version="0.0.5",
     author="lonePatient",
     author_email="liuweitangmath@163.com",
     description="A PyTorch-based toolkit for natural language processing",
@@ -20,7 +20,7 @@ setup(
         "sentencepiece",
         "sacremoses",
     ],
-    python_requires=">=3.6.0",
+    python_requires=">=3.7.0",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
@@ -29,7 +29,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],

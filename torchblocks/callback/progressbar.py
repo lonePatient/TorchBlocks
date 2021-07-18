@@ -44,7 +44,7 @@ class ProgressBar(object):
                 time_info = f' {time_per_unit * 1e6:.1f}us/step'
         return time_info
 
-    def _bar(self, now, current):
+    def _bar(self, current):
         recv_per = current / self.n_total
         bar = f'[{self.desc}] {current}/{self.n_total} ['
         if recv_per >= 1: recv_per = 1
@@ -62,13 +62,13 @@ class ProgressBar(object):
     def epoch_start(self,current_epoch):
         sys.stdout.write("\n")
         if (current_epoch is not None) and (self.num_epochs is not None):
-            sys.stdout.write(f"Epoch: {current_epoch}/{self.num_epochs}")
+            sys.stdout.write(f"Epoch: {current_epoch}/{int(self.num_epochs)}")
             sys.stdout.write("\n")
 
     def __call__(self, step, info={}):
         now = time.time()
         current = step + 1
-        bar = self._bar(now, current)
+        bar = self._bar(current)
         show_bar = f"\r{bar}" + self._time_info(now, current)
         if len(info) != 0:
             show_bar = f'{show_bar} ' + " [" + "-".join(

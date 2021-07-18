@@ -105,13 +105,16 @@ class DataProcessor:
                 inputs.update(({f'{LOWERCASE_STRS[i]}_' + key: value for key, value in _inputs.items()}))
         return inputs
 
-    def collate_fn(self, batch):
+    def collate_fn(self, batch,dynamic=True):
         """
         batch数据动态长度变化（根据mask进行计算），batch形式必须满足：
         (input_ids, attention_mask, *,*,*, labels) tuples...
         """
         batch = list(map(torch.stack, zip(*batch)))
-        max_seq_len = torch.max(torch.sum(batch[1], 1)).item()
+        if dynamic==False:
+            max_seq_len = batch[0].size(1)
+        else:
+            max_seq_len = torch.max(torch.sum(batch[1], 1)).item()
         num_inputs = len(batch)
         # test时一般label为None，所以导致keys_num!=input_keys_num
         has_label = num_inputs == len(self.get_input_keys())
@@ -219,7 +222,7 @@ class DataProcessor:
         '''
         转化为特征
         '''
-        raise NotImplementedError()
+        raise NotImplementedError('Method [convert_to_features] should be implemented.')
 
     def create_examples(self, **kwargs):
         '''

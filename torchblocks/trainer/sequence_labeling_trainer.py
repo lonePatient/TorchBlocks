@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torchblocks.trainer.base import BaseTrainer
 from torchblocks.callback import ProgressBar
-from torchblocks.metrics.utils import get_spans
+from torchblocks.metrics.utils_ner import get_spans
 from torchblocks.utils.tensor import tensor_to_list
 
 

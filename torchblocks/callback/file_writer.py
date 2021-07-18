@@ -2,7 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from collections import defaultdict
-from ..utils.paths import save_json,ensure_dir
+from torchblocks.utils.paths import save_json,ensure_dir
 plt.switch_backend('agg')  # 防止ssh上绘图问题
 
 FILE_NAME = 'training_info.json'

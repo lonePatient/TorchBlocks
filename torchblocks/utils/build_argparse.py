@@ -1,5 +1,11 @@
 import argparse
 
+
+def convert_configparser_to_dictionary(config):
+    config_parser_dict = {s: dict(config.items(s)) for s in config.sections()}
+    return config_parser_dict
+
+
 def build_argparse(description=None):
     parser = argparse.ArgumentParser(description=description)
     # Required parameters

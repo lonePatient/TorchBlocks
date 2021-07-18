@@ -4,7 +4,7 @@ import logging
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from collections import defaultdict
-from ..utils.paths import save_json,ensure_dir
+from torchblocks.utils.paths import save_json,ensure_dir
 plt.switch_backend('agg')  # 防止ssh上绘图问题
 
 
@@ -25,7 +25,7 @@ class TrainLogger:
         '''
         初始化logger
         '''
-        log_format = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+        log_format = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
                                        datefmt='%m/%d/%Y %H:%M:%S')
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
