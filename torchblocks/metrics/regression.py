@@ -1,6 +1,6 @@
 
 import torch
-from .base import Metric
+from torchblocks.metrics.base import Metric
 from torch.nn import functional as F
 
 
