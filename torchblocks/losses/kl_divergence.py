@@ -8,10 +8,10 @@ class KL(nn.Module):
         super(KL, self).__init__()
         self.reduction = reduction
 
-    def forward(self, input, target):
-        input = input.float()
+    def forward(self, preds, target):
+        preds = preds.float()
         target = target.float()
-        loss = F.kl_div(F.log_softmax(input, dim=-1), F.softmax(target, dim=-1), reduction='batchmean')
+        loss = F.kl_div(F.log_softmax(preds, dim=-1), F.softmax(target, dim=-1), reduction='batchmean')
         return loss
 
 
@@ -20,8 +20,8 @@ class SKL(nn.Module):
         super(SKL, self).__init__()
         self.epsilon = epsilon
 
-    def forward(self, input, target):
-        logit = input.view(-1, input.size(-1)).float()
+    def forward(self, preds, target):
+        logit = preds.view(-1, preds.size(-1)).float()
         target = target.view(-1, target.size(-1)).float()
         bs = logit.size(0)
         p = F.log_softmax(logit, 1).exp()

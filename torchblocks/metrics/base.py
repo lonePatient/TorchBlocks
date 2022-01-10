@@ -1,6 +1,7 @@
 class Metric:
-
-    def update(self, outputs, target):
+    """Store the average and current value for a set of metrics.
+    """
+    def update(self, preds, target):
         raise NotImplementedError
 
     def value(self):
@@ -11,3 +12,4 @@ class Metric:
 
     def reset(self):
         pass
+

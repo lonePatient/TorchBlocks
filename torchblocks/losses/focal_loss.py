@@ -16,7 +16,7 @@ class FocalLoss(nn.Module):
         self.epsilon = epsilon
         self.activation_type = activation_type
 
-    def forward(self, input, target):
+    def forward(self, preds, target):
         """
         Args:
             logits: model's output, shape of [batch_size, num_cls]
@@ -28,12 +28,12 @@ class FocalLoss(nn.Module):
             idx = target.view(-1, 1).long()
             one_hot_key = torch.zeros(idx.size(0), self.num_labels, dtype=torch.float32, device=idx.device)
             one_hot_key = one_hot_key.scatter_(1, idx, 1)
-            logits = F.softmax(input, dim=-1)
+            logits = F.softmax(preds, dim=-1)
             loss = -self.alpha * one_hot_key * torch.pow((1 - logits), self.gamma) * (logits + self.epsilon).log()
             loss = loss.sum(1)
         elif self.activation_type == 'sigmoid':
             multi_hot_key = target
-            logits = F.sigmoid(input)
+            logits = F.sigmoid(preds)
             zero_hot_key = 1 - multi_hot_key
             loss = -self.alpha * multi_hot_key * torch.pow((1 - logits), self.gamma) * (logits + self.epsilon).log()
             loss += -(1 - self.alpha) * zero_hot_key * torch.pow(logits, self.gamma) * (1 - logits + self.epsilon).log()

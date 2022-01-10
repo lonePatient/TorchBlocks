@@ -1,0 +1,7 @@
+tokenizers >= 0.7.0
+transformers >= 4.1.1
+sacremoses
+sentencepiece
+scipy
+scikit-learn
+torchmetrics>=0.6.0

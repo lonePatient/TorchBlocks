@@ -1,20 +1,20 @@
+import torch
 import torch.nn as nn
-from torch.nn.modules.loss import _Loss
 
 
-class SpanLoss(_Loss):
+class SpanLoss(nn.Module):
     def __init__(self, alpha=1.0, ignore_index=-1, name='Span Cross Entropy Loss'):
         super().__init__()
         self.alpha = alpha
         self.name = name
         self.loss_fct = nn.CrossEntropyLoss(ignore_index=ignore_index)
 
-    def forward(self, input, target, masks=None):
+    def forward(self, preds, target, masks=None):
         # assert if inp and target has both start and end values
-        assert len(input) == 2, "start and end logits should be present for span loss calc"
+        assert len(preds) == 2, "start and end logits should be present for span loss calc"
         assert len(target) == 2, "start and end logits should be present for span loss calc"
         active_loss = masks.view(-1) == 1
-        start_logits, end_logits = input
+        start_logits, end_logits = preds
         start_positions, end_positions = target
 
         start_logits = start_logits.view(-1, start_logits.size(-1))
