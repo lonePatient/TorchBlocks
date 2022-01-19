@@ -4,18 +4,23 @@ import time
 
 class ProgressBar(object):
     '''
-    custom progress bar
+    自定义进度条
     Example:
         >>> pbar = ProgressBar(n_total=30,desc='Training')
         >>> step = 2
         >>> pbar(step=step,info={'loss':20})
     '''
 
-    def __init__(self, n_total, width=30, desc='Training',num_epochs = None):
-
-        self.width = width
-        self.n_total = n_total
+    def __init__(self,
+                 n_total,
+                 bar_width=50,
+                 desc='Training',
+                 num_epochs=None,
+                 file=sys.stdout):
         self.desc = desc
+        self.file = file
+        self.width = bar_width
+        self.n_total = n_total
         self.start_time = time.time()
         self.num_epochs = num_epochs
 
@@ -59,22 +64,23 @@ class ProgressBar(object):
         bar += ']'
         return bar
 
-    def epoch_start(self,current_epoch):
-        sys.stdout.write("\n")
+    def epoch(self, current_epoch):
+        self.reset()
+        self.file.write("\n")
         if (current_epoch is not None) and (self.num_epochs is not None):
-            sys.stdout.write(f"Epoch: {current_epoch}/{int(self.num_epochs)}")
-            sys.stdout.write("\n")
+            self.file.write(f"Epoch: {current_epoch}/{int(self.num_epochs)}")
+            self.file.write("\n")
 
-    def __call__(self, step, info={}):
+    def step(self, step, info={}):
         now = time.time()
         current = step + 1
         bar = self._bar(current)
         show_bar = f"\r{bar}" + self._time_info(now, current)
         if len(info) != 0:
             show_bar = f'{show_bar} ' + " [" + "-".join(
-                [f' {key}={value:.4f} ' for key, value in info.items()]) + "]"
+                [f' {key}={value:4f}  ' for key, value in info.items()]) + "]"
         if current >= self.n_total:
             show_bar += '\n'
-        sys.stdout.write(show_bar)
-        sys.stdout.flush()
-
+            self.reset()
+        self.file.write(show_bar)
+        self.file.flush()

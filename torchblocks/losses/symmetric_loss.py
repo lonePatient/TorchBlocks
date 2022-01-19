@@ -2,11 +2,13 @@ import torch.nn.functional as F
 import torch
 import torch.nn as nn
 
+
 class SymmetricCE(nn.Module):
     """Pytorch Implementation of Symmetric Cross Entropy.
 
     Paper: https://arxiv.org/abs/1908.06112
     """
+
     def __init__(self, num_classes, alpha: float = 1.0, beta: float = 1.0):
         """Constructor method for symmetric CE.
 
@@ -21,11 +23,11 @@ class SymmetricCE(nn.Module):
         self.num_classes = num_classes
         self.ce = nn.CrossEntropyLoss()
 
-    def forward(self, input, target):
+    def forward(self, preds, target):
         """Forward method."""
-        ce = self.ce(input, target)
+        ce = self.ce(preds, target)
 
-        logits = F.softmax(input, dim=1)
+        logits = F.softmax(preds, dim=1)
         logits = torch.clamp(logits, min=1e-7, max=1.0)
         if logits.is_cuda:
             label_one_hot = torch.nn.functional.one_hot(target, self.num_classes).float().cuda()

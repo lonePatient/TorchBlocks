@@ -1,22 +1,35 @@
 import torch
 import numbers
 import numpy as np
+import torch.nn.functional as F
+from torchblocks.utils.common import check_object_type
 
-def numpy_to_tensor(array):
+'''
+常用tensor操作
+'''
+def convert_to_tensor(obj):
+    """
+    Converts to Tensor if given object is not a Tensor.
+    """
+    if not isinstance(obj, torch.Tensor):
+        obj = torch.Tensor(obj)
+    return obj
+
+def numpy_to_tensor(array, device=torch.device("cpu")):
     if not isinstance(array, np.ndarray):
-        raise ValueError("array type: expected one of (np.ndarray)")
-    return torch.from_numpy(array)
+        raise ValueError("array type: expected one of (np.ndarray,)")
+    return torch.from_numpy(array).to(device)
 
 
-def number_to_tensor(number):
+def number_to_tensor(number, device=torch.device("cpu")):
     if not isinstance(number, numbers.Number):
-        raise ValueError("number type: expected one of (numbers.Number)")
-    return torch.tensor([number])
+        raise ValueError("number type: expected one of (numbers.Number,)")
+    return torch.tensor([number], device=device)
 
 
 def tensor_to_cpu(tensor):
     if not isinstance(tensor, torch.Tensor):
-        raise ValueError("tensor type: expected one of (torch.Tensor)")
+        raise ValueError("tensor type: expected one of (torch.Tensor,)")
     return tensor.detach().cpu()
 
 
@@ -40,21 +53,21 @@ def select_logits_with_mask(logits, mask):
 
 
 def length_to_mask(length, max_len=None, dtype=None):
-    """
+    '''
     将 Sequence length 转换成 Mask
-
-    >>> lens = [3, 5, 4]
-    >>> length_to_mask(length)
-    >>> [[1, 1, 1, 0, 0],\
-        [1, 1, 1, 1, 1], \
-        [1, 1, 1, 1, 0]]
-
-    :param length: [batch,]
-    :param max_len: 最大长度
-    :param dtype: nn.dtype
-    :return: batch * max_len : 如果 max_len is None
-    :return: batch * max(length) : 如果 max_len is None
-    """
+    Args:
+        length: [batch,]
+        max_len: 最大长度
+        dtype: nn.dtype
+    Returns:
+        batch * max_len : 如果 max_len is None
+    Examples:
+        >>> lens = [3, 5, 4]
+        >>> length_to_mask(length)
+        >>> [[1, 1, 1, 0, 0],\
+            [1, 1, 1, 1, 1], \
+            [1, 1, 1, 1, 0]]
+    '''
     assert len(length.shape) == 1, 'Length shape should be 1 dimensional.'
     if max_len is None:
         max_len = max_len or torch.max(length)
@@ -66,6 +79,14 @@ def length_to_mask(length, max_len=None, dtype=None):
 
 
 def pad_sequence(sequences, batch_first=True, pad_value=0):
+    '''
+    Args:
+        sequences:
+        batch_first:
+        pad_value:
+    Returns:
+    '''
+
     def length(sequence):
         if isinstance(sequence, torch.Tensor):
             return sequence.size(0)
@@ -115,3 +136,27 @@ def to_categorical(tensor, argmax_dim=1):
         tensor([1, 0])
     """
     return torch.argmax(tensor, dim=argmax_dim)
+
+
+def get_dropout_mask(drop_p, tensor):
+    r"""
+    根据tensor的形状，生成一个mask
+    :param drop_p: float, 以多大的概率置为0。
+    :param tensor: torch.Tensor
+    :return: torch.FloatTensor. 与tensor一样的shape
+    """
+    mask_x = torch.ones_like(tensor)
+    F.dropout(mask_x, p=drop_p, training=False, inplace=True)
+    return mask_x
+
+
+def select_topk(tensor, topk=1, dim=1):
+    """Convert a probability tensor to binary by selecting top-k highest entries.
+    """
+    check_object_type(object=tensor, check_type=torch.Tensor, name='tensor')
+    zeros = torch.zeros_like(tensor)
+    if topk == 1:  # argmax has better performance than topk
+        topk_tensor = zeros.scatter(dim, tensor.argmax(dim=dim, keepdim=True), 1.0)
+    else:
+        topk_tensor = zeros.scatter(dim, tensor.topk(k=topk, dim=dim).indices, 1.0)
+    return topk_tensor.int()

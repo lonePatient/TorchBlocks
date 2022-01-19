@@ -2,27 +2,29 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from collections import defaultdict
-from torchblocks.utils.paths import save_json,ensure_dir
+from torchblocks.utils.paths import save_json, create_dir
+
 plt.switch_backend('agg')  # 防止ssh上绘图问题
 
 FILE_NAME = 'training_info.json'
+
 
 class FileWriter:
 
     def __init__(self, log_dir):
         self.log_dir = log_dir
         self.scale_dicts = defaultdict(list)
-        ensure_dir(self.log_dir)
+        create_dir(self.log_dir)
 
     def add_scalar(self, tag, scalar_value, global_step=None):
         if global_step is not None:
-            assert isinstance(global_step, int)
+            global_step = int(global_step)
         _dict = {tag: scalar_value, 'step': global_step}
         self.scale_dicts[tag].append(_dict)
 
     def save(self, plot=True):
-        save_path = os.path.join(self.log_dir,FILE_NAME)
-        save_json(data=self.scale_dicts,file_path=save_path)
+        save_path = os.path.join(self.log_dir, FILE_NAME)
+        save_json(data=self.scale_dicts, file_path=save_path)
         if plot:
             self.plot()
 

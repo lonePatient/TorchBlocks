@@ -1,118 +1,159 @@
 import os
 import csv
-from torchblocks.metrics import MattewsCorrcoef
-from torchblocks.callback import TrainLogger
-from torchblocks.trainer import TextClassifierTrainer
-from torchblocks.processor import TextClassifierProcessor, InputExample
-from torchblocks.utils import seed_everything, dict_to_text, build_argparse
-from torchblocks.utils import prepare_device, get_checkpoints
-from transformers import BertForSequenceClassification, BertConfig, BertTokenizer, WEIGHTS_NAME
+from typing import List, Dict, Callable, Any
+from torchblocks.core import TextClassifierTrainer
+from torchblocks.data.dataset import DatasetBase
+from torchblocks.utils.seed import seed_everything
+from torchblocks.utils.options import Argparser
+from torchblocks.utils.device import prepare_device
+from torchblocks.utils.logger import Logger
+from torchblocks.utils.paths import check_dir
+from torchblocks.data.process_base import ProcessBase
+from torchblocks.utils.paths import find_all_checkpoints
+from torchblocks.metrics.classification.matthews_corrcoef import MattewsCorrcoef
+from transformers import BertForSequenceClassification, BertConfig, BertTokenizer
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertTokenizer)
 }
 
 
-class ColaProcessor(TextClassifierProcessor):
+class ColaDataset(DatasetBase):
 
-    def get_labels(self):
-        """See base class."""
+    def __init__(self,
+                 data_name,
+                 data_dir,
+                 data_type,
+                 process_piplines: List[Callable],
+                 **kwargs):
+        super().__init__(data_name, data_dir, data_type, process_piplines, **kwargs)
+
+    @classmethod
+    def get_labels(self) -> List[str]:
         return ["0", "1"]
 
-    def read_data(self, input_file):
-        """Reads a json list file."""
+    def read_data(self, input_file: str) -> Any:
         with open(input_file, "r", encoding="utf-8-sig") as f:
-            reader = csv.reader(f, delimiter="\t", quotechar=None)
-            lines = []
-            for line in reader:
-                lines.append(line)
-            return lines
+            return list(csv.reader(f, delimiter="\t"))
 
-    def create_examples(self, lines, set_type):
-        """Creates examples for the training and dev sets."""
+    def create_examples(self, data: Any, data_type: str, **kwargs) -> List[Dict[str, Any]]:
+        test_mode = data_type == "test"
+        if test_mode:
+            data = data[1:]
+        text_index = 1 if test_mode else 3
         examples = []
-        for (i, line) in enumerate(lines):
-            guid = "%s-%s" % (set_type, i)
-            text_a = line[3] if set_type != 'test' else line[1]
-            label = line[1] if set_type != 'test' else None
-            examples.append(
-                InputExample(guid=guid, texts=[text_a, None], label=label))
+        for (i, line) in enumerate(data):
+            guid = f"{data_type}-{i}"
+            text = line[text_index]
+            label = None if test_mode else line[1]
+            examples.append(dict(guid=guid, text=text, label=label))
         return examples
 
 
+class ProcessEncodeText(ProcessBase):
+    """ 编码单句任务文本，在原有example上追加 """
+
+    def __init__(self, tokenizer, tokenizer_params, return_input_length=False):
+        self.tokenizer = tokenizer
+        self.tokenizer_params = tokenizer_params
+        self.return_input_length = return_input_length
+
+    def __call__(self, example):
+        inputs = self.tokenizer(example["text"], **self.tokenizer_params)
+        inputs = {k: v.squeeze() for k, v in inputs.items()}
+        if self.return_input_length:
+            inputs["input_length"] = inputs["attention_mask"].sum().item()
+        example = dict(example, **inputs)
+        return example
+
+
+class ProcessEncodeLabel(ProcessBase):
+    """ 编码单标签文本标签 """
+
+    def __init__(self, label2id):
+        self.label2id = label2id
+
+    def __call__(self, example):
+        example["label"] = self.label2id.get(example["label"], None)
+        return example
+
+
+def load_data(data_name, data_dir, data_type, tokenizer, max_sequence_length):
+    process_piplines = [ProcessEncodeText(tokenizer,
+                                          tokenizer_params={
+                                              "padding": "max_length",
+                                              "truncation": "longest_first",
+                                              "max_length": max_sequence_length,
+                                              "return_tensors": "pt",
+                                          }),
+                        ProcessEncodeLabel(ColaDataset.label2id())
+                        ]
+    return ColaDataset(data_name=data_name,
+                       data_dir=data_dir,
+                       data_type=data_type,
+                       process_piplines=process_piplines
+                       )
+
+
 def main():
-    args = build_argparse().parse_args()
-    if args.model_name is None:
-        args.model_name = args.model_path.split("/")[-1]
-    args.output_dir = args.output_dir + '{}'.format(args.model_name)
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    # output dir
-    prefix = "_".join([args.model_name, args.task_name])
-    logger = TrainLogger(log_dir=args.output_dir, prefix=prefix)
-
+    opts = Argparser().get_training_arguments()
+    logger = Logger(opts=opts)
     # device
     logger.info("initializing device")
-    args.device, args.n_gpu = prepare_device(args.gpu, args.local_rank)
-    seed_everything(args.seed)
-    args.model_type = args.model_type.lower()
-    config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
-
+    opts.device, opts.device_num = prepare_device(opts.device_id)
+    seed_everything(opts.seed)
+    config_class, model_class, tokenizer_class = MODEL_CLASSES[opts.model_type]
     # data processor
     logger.info("initializing data processor")
-    tokenizer = tokenizer_class.from_pretrained(args.model_path, do_lower_case=args.do_lower_case)
-    processor = ColaProcessor(data_dir=args.data_dir, tokenizer=tokenizer, prefix=prefix)
-    label_list = processor.get_labels()
-    num_labels = len(label_list)
-    args.num_labels = num_labels
-
+    tokenizer = tokenizer_class.from_pretrained(opts.pretrained_model_path, do_lower_case=opts.do_lower_case)
+    train_dataset = load_data(opts.train_input_file, opts.data_dir, "train", tokenizer, opts.train_max_seq_length)
+    dev_dataset = load_data(opts.eval_input_file, opts.data_dir, "dev", tokenizer, opts.eval_max_seq_length)
+    opts.num_labels = train_dataset.num_labels
     # model
     logger.info("initializing model and config")
-    config = config_class.from_pretrained(args.model_path, num_labels=num_labels,
-                                          cache_dir=args.cache_dir if args.cache_dir else None)
-    model = model_class.from_pretrained(args.model_path, config=config)
-    model.to(args.device)
-
+    config = config_class.from_pretrained(opts.pretrained_model_path, num_labels=opts.num_labels)
+    model = model_class.from_pretrained(opts.pretrained_model_path, config=config)
+    model.to(opts.device)
     # trainer
     logger.info("initializing traniner")
-    trainer = TextClassifierTrainer(logger=logger, args=args, collate_fn=processor.collate_fn,
-                                    input_keys=processor.get_input_keys(),
-                                    metrics=[MattewsCorrcoef()])
+    trainer = TextClassifierTrainer(opts=opts,
+                                    model=model,
+                                    metrics=[MattewsCorrcoef(num_classes=opts.num_labels)],
+                                    logger=logger
+                                    )
     # do train
-    if args.do_train:
-        train_dataset = processor.create_dataset(args.train_max_seq_length, 'train.tsv', 'train')
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
-        trainer.train(model, train_dataset=train_dataset, eval_dataset=eval_dataset)
-    # do eval
-    if args.do_eval and args.local_rank in [-1, 0]:
-        results = {}
-        eval_dataset = processor.create_dataset(args.eval_max_seq_length, 'dev.tsv', 'dev')
-        checkpoints = [args.output_dir]
-        if args.eval_all_checkpoints or args.checkpoint_number > 0:
-            checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
+    if opts.do_train:
+        trainer.train(train_data=train_dataset, dev_data=dev_dataset, state_to_save={'vocab': tokenizer})
+    if opts.do_eval:
+        checkpoints = []
+        if opts.checkpoint_predict_code is not None:
+            checkpoint = os.path.join(opts.output_dir, opts.checkpoint_predict_code)
+            check_dir(checkpoint)
+            checkpoints.append(checkpoint)
+        if opts.eval_all_checkpoints:
+            checkpoints = find_all_checkpoints(checkpoint_dir=opts.output_dir)
         logger.info("Evaluate the following checkpoints: %s", checkpoints)
         for checkpoint in checkpoints:
-            global_step = checkpoint.split("/")[-1].split("-")[-1]
+            prefix = checkpoint.split("/")[-1]
             model = model_class.from_pretrained(checkpoint, config=config)
-            model.to(args.device)
-            trainer.evaluate(model, eval_dataset, save_preds=True, prefix=str(global_step))
-            if global_step:
-                result = {"{}_{}".format(global_step, k): v for k, v in trainer.records['result'].items()}
-                results.update(result)
-        output_eval_file = os.path.join(args.output_dir, "eval_results.txt")
-        dict_to_text(output_eval_file, results)
+            model.to(opts.device)
+            trainer.model = model
+            trainer.evaluate(dev_data=dev_dataset, save_result=True, save_dir=prefix)
 
-    # do predict
-    if args.do_predict:
-        test_dataset = processor.create_dataset(args.eval_max_seq_length, 'test.tsv', 'test')
-        if args.checkpoint_number == 0:
-            raise ValueError("checkpoint number should > 0,but get %d", args.checkpoint_number)
-        checkpoints = get_checkpoints(args.output_dir, args.checkpoint_number, WEIGHTS_NAME)
+    if opts.do_predict:
+        test_dataset = load_data(opts.test_input_file, opts.data_dir, "test", tokenizer, opts.test_max_seq_length)
+        checkpoints = []
+        if opts.checkpoint_predict_code is not None:
+            checkpoint = os.path.join(opts.output_dir, opts.checkpoint_predict_code)
+            check_dir(checkpoint)
+            checkpoints.append(checkpoint)
+        logger.info("Evaluate the following checkpoints: %s", checkpoints)
         for checkpoint in checkpoints:
-            global_step = checkpoint.split("/")[-1].split("-")[-1]
-            model = model_class.from_pretrained(checkpoint)
-            model.to(args.device)
-            trainer.predict(model, test_dataset=test_dataset, prefix=str(global_step))
+            prefix = checkpoint.split("/")[-1]
+            model = model_class.from_pretrained(checkpoint, config=config)
+            model.to(opts.device)
+            trainer.model = model
+            trainer.predict(test_data=test_dataset, save_result=True, save_dir=prefix)
 
 
 if __name__ == "__main__":

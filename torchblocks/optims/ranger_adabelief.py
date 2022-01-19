@@ -11,7 +11,7 @@
 # Lookahead paper --> MZhang,G Hinton  https://arxiv.org/abs/1907.08610
 
 # summary of changes:
-# 9/4/20 - updated addcmul_ signature to avoid warning.  Integrates latest changes from GC developer (he did the work for this), and verified on performance on private dataset.
+# 9/4/20 - updated addcmul_ signature to avoid warning.  Integrates latest changes from GC developer (he did the work for this), and verified on performance on private datasets.
 # 4/11/20 - add gradient centralization option.  Set new testing benchmark for accuracy with it, toggle with use_gc flag at init.
 # full code integration with all updates at param level instead of group, moves slow weights into state dict (from generic weights),
 # supports group learning rates (thanks @SHolderbach), fixes sporadic load from saved model issues.
@@ -57,7 +57,7 @@ class RangerAdaBelief(Optimizer):
         # parameter comments:
         # beta1 (momentum) of .95 seems to work better than .90...
         # N_sma_threshold of 5 seems better in testing than 4.
-        # In both cases, worth testing on your dataset (.90 vs .95, 4 vs 5) to make sure which works best for you.
+        # In both cases, worth testing on your datasets (.90 vs .95, 4 vs 5) to make sure which works best for you.
 
         # prep defaults and init torch.optim base
         defaults = dict(lr=lr, alpha=alpha, k=k, step_counter=0, betas=betas,
