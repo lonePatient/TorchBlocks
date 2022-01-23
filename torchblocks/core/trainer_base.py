@@ -627,7 +627,7 @@ class TrainerBase:
         pbar = ProgressBar(n_total=len(eval_dataloader), desc='Evaluating')
         for step, batch in enumerate(eval_dataloader):
             batch = self.predict_forward(batch)
-            if 'loss' in batch:
+            if 'loss' in batch and batch['loss'] is not None:
                 self.records['loss_meter'].update(batch['loss'], n=1)
             all_batch_list.append(batch)
             pbar.step(step)
@@ -666,7 +666,7 @@ class TrainerBase:
         inputs = self.build_batch_inputs(batch)
         with torch.no_grad():
             outputs = self.model(**inputs)
-        if 'loss' in outputs:
+        if 'loss' in outputs and outputs['loss'] is not None:
             outputs['loss'] = outputs['loss'].mean().detach().item()
         outputs = {key: value.detach().cpu() if isinstance(value, torch.Tensor) else value for key, value in
                    outputs.items()}
