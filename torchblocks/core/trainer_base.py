@@ -329,8 +329,11 @@ class TrainerBase:
         rreturn:
          The inputs are in a dictionary format
         '''
-        inputs = {key: value.to(self.device) if key not in self.keys_to_ignore_on_gpu else value for key, value in
-                  batch.items()}
+        inputs = {key: (
+          value.to(self.device) if (
+            (key not in self.keys_to_ignore_on_gpu) and (value is not None)
+          ) else value
+        ) for key, value in batch.items()}
         return inputs
 
     def check_nan(self, loss):
