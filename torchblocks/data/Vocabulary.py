@@ -134,11 +134,9 @@ class Vocabulary(object):
     def save_vocab(self, vocab_path):
         """
         Save the sentencepiece vocabulary (copy original file) and special tokens file to a directory.
-
         Args:
             vocab_path (:obj:`str`):
                 The directory in which to save the vocabulary.
-
         Returns:
             :obj:`Tuple(str)`: Paths to the files saved.
         """
@@ -157,7 +155,7 @@ class Vocabulary(object):
                     index = token_index
                 writer.write(token + "\n")
                 index += 1
-        return (vocab_file,)
+        return vocab_file
 
     def load_vocab(self, vocab_file):
         """Loads a vocabulary file into a dictionary."""

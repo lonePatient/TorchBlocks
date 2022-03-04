@@ -7,7 +7,7 @@ from torchblocks.utils.paths import find_all_checkpoints
 
 logger = logging.getLogger(__name__)
 
-
+#TODO 待优化
 class SWA:
     '''
     checkpoint_dir:模型目录

@@ -9,7 +9,7 @@ from transformers import (
 from torchblocks.data.dataset import DatasetBase
 from torchblocks.data.process_base import ProcessBase
 from torchblocks.tasks.sequence_labeling_crf import BertCrfForSeqLabel
-from torchblocks.metrics.sequence_labeling import SequenceLabelingScore
+from torchblocks.metrics.sequence_labeling.seqTag_score import SequenceLabelingScore
 from torchblocks.utils.options import Argparser
 from torchblocks.utils.logger import Logger
 from torchblocks.core import SequenceLabelingTrainer
@@ -17,6 +17,7 @@ from torchblocks.utils.device import prepare_device
 from torchblocks.utils.paths import check_dir
 from torchblocks.utils.paths import find_all_checkpoints
 from torchblocks.utils.seed import seed_everything
+
 
 class CnerDataset(DatasetBase):
     keys_to_truncate_on_dynamic_batch = [
@@ -33,38 +34,47 @@ class CnerDataset(DatasetBase):
 
     @classmethod
     def get_labels(self) -> List[str]:
-        labels = ['X', 'O']
-        for prefix, label in product(
-                ['B', 'M', 'E', 'S'],
-                ['CONT', 'NAME', 'PRO', 'ORG', 'RACE', 'TITLE', 'LOC', 'EDU'],
-        ):
-            labels.append(f"{prefix}-{label}")
+        labels = ["X", 'B-CONT', 'B-EDU', 'B-LOC', 'B-NAME', 'B-ORG', 'B-PRO', 'B-RACE', 'B-TITLE',
+                  'I-CONT', 'I-EDU', 'I-LOC', 'I-NAME', 'I-ORG', 'I-PRO', 'I-RACE', 'I-TITLE',
+                  'O', 'S-NAME', 'S-ORG', 'S-RACE','[START]','[END]']
         return labels
 
     def read_data(self, input_file: str) -> Any:
-        current_words = []
-        current_tag_classes = []
-        with open(input_file, encoding='utf-8') as f:
+        lines = []
+        with open(input_file, 'r') as f:
+            words = []
+            labels = []
             for line in f:
-                line = line.strip()
-                if line:
-                    word, tag_class = line.split(' ')
-                    current_words.append(word)
-                    current_tag_classes.append(tag_class)
-
+                if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                    if words:
+                        lines.append([words, labels])
+                        words = []
+                        labels = []
                 else:
-                    yield (current_words, current_tag_classes)
-                    current_words = []
-                    current_tag_classes = []
-            if current_tag_classes != []:
-                yield (current_words, current_tag_classes)
+                    splits = line.split(" ")
+                    words.append(splits[0])
+                    if len(splits) > 1:
+                        labels.append(splits[-1].replace("\n", ""))
+                    else:
+                        # Examples could have no label for mode = "test"
+                        labels.append("O")
+            if words:
+                lines.append([words, labels])
+        return lines
 
     def create_examples(self, data: Any, data_type: str, **kwargs) -> List[Dict[str, Any]]:
         examples = []
         for (i, line) in enumerate(data):
             guid = f"{data_type}-{i}"
             tokens = line[0]
-            labels = None if data_type == "test" else line[1]
+            labels = []
+            for x in line[1]:
+                if 'M-' in x:
+                    labels.append(x.replace('M-', 'I-'))
+                elif 'E-' in x:
+                    labels.append(x.replace('E-', 'I-'))
+                else:
+                    labels.append(x)
             examples.append(dict(guid=guid, tokens=tokens, labels=labels))
         return examples
 
@@ -118,7 +128,6 @@ MODEL_CLASSES = {
     "bert": (BertConfig, BertCrfForSeqLabel, BertTokenizer),
 }
 
-
 def main():
     opts = Argparser().get_training_arguments()
     logger = Logger(opts=opts)
@@ -139,14 +148,16 @@ def main():
     # model
     logger.info("initializing model and config")
     config = config_class.from_pretrained(opts.pretrained_model_path,
-                                          num_labels=opts.num_labels, label2id=opts.label2id, id2label=opts.id2label)
+                                          num_labels=opts.num_labels,
+                                          label2id=opts.label2id,
+                                          id2label=opts.id2label)
     model = model_class.from_pretrained(opts.pretrained_model_path, config=config)
     model.to(opts.device)
 
     # trainer
     logger.info("initializing traniner")
     labels = {label.split('-')[1] for label in CnerDataset.get_labels() if '-' in label}
-    metrics = [SequenceLabelingScore(labels, 'micro')]
+    metrics = [SequenceLabelingScore(labels=labels, average='micro', schema='BIOS')]
     trainer = SequenceLabelingTrainer(opts=opts,
                                       model=model,
                                       metrics=metrics,

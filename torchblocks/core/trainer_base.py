@@ -1,24 +1,25 @@
 import os
 import sys
 import math
-import pandas as pd
 import torch
 import warnings
+import pandas as pd
 import torch.nn as nn
 from argparse import Namespace
 from packaging import version
 
-from torchblocks.core.utils import is_apex_available
-from torchblocks.optims.adamw import AdamW
-from torchblocks.optims.lr_scheduler import get_lr_sceduler
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import RandomSampler, SequentialSampler
-from torchblocks.callback.adversarial import FGM, PGD
-from torchblocks.callback import ModelCheckpoint, EarlyStopping, ProgressBar, EMA
+
+from torchblocks.optims.adamw import AdamW
 from torchblocks.utils.logger import Logger
+from torchblocks.callback.adversarial import FGM, PGD
+from torchblocks.core.utils import is_apex_available
+from torchblocks.optims.lr_scheduler import get_lr_scheduler
 from torchblocks.utils.common import check_object_type
 from torchblocks.utils.seed import seed_everything
 from torchblocks.utils.meter import AverageMeter
+from torchblocks.callback import ModelCheckpoint, EarlyStopping, ProgressBar, EMA
 from torchblocks.utils.paths import to_json_string, save_pickle, json_to_text, load_model, is_file
 from torchblocks.callback.model_checkpoint import (WEIGHTS_NAME,
                                                    TRAINER_STATE_NAME,
@@ -256,7 +257,7 @@ class TrainerBase:
         '''
         the learning rate scheduler.
         '''
-        scheduler_function = get_lr_sceduler(self.opts.scheduler_type)
+        scheduler_function = get_lr_scheduler(self.opts.scheduler_type)
         warmup_steps = self.build_warmup_steps(num_training_steps)
         scheduler = scheduler_function(optimizer=self.optimizer,
                                        num_warmup_steps=warmup_steps,
@@ -297,7 +298,6 @@ class TrainerBase:
                                      sampler=sampler,
                                      batch_size=batch_size,
                                      collate_fn=collate_fn,
-                                     drop_last=self.opts.drop_last,
                                      num_workers=self.opts.num_workers)
             return data_loader
         else:
@@ -317,7 +317,6 @@ class TrainerBase:
                                      sampler=sampler,
                                      batch_size=batch_size,
                                      collate_fn=collate_fn,
-                                     drop_last=self.opts.drop_last,
                                      num_workers=self.opts.num_workers)
             return data_loader
         else:
@@ -330,9 +329,9 @@ class TrainerBase:
          The inputs are in a dictionary format
         '''
         inputs = {key: (
-          value.to(self.device) if (
-            (key not in self.keys_to_ignore_on_gpu) and (value is not None)
-          ) else value
+            value.to(self.device) if (
+                    (key not in self.keys_to_ignore_on_gpu) and (value is not None)
+            ) else value
         ) for key, value in batch.items()}
         return inputs
 
@@ -597,9 +596,9 @@ class TrainerBase:
                 print_result.append([key, value])
         for key, value in print_result:
             if isinstance(value, pd.DataFrame):
-                self.logger.info(f" %s : \n %s", key, str(round(value, 4)))
+                self.logger.info(f" %s : \n %s", key, str(round(value, 5)))
             else:
-                self.logger.info(f"  %s = %s", key, str(round(value, 4)))
+                self.logger.info(f"  %s = %s", key, str(round(value, 5)))
                 name = "_".join(key.split("_")[1:]) if "_" in key else key
                 self.writer.add_scalar(f"{name}/{key}", value, int(self.global_step / self.opts.logging_steps))
 
@@ -643,16 +642,11 @@ class TrainerBase:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    def build_batch_concat(self, all_batch_list, dim=0):
-        preds = torch.cat([batch['logits'] for batch in all_batch_list], dim=dim)
-        target = torch.cat([batch['labels'] for batch in all_batch_list], dim=dim)
-        return preds, target
-
     def update_metrics(self, all_batch_list, prefix):
-        preds, target = self.build_batch_concat(all_batch_list, dim=0)
+        eval_data = self.build_batch_concat(all_batch_list, dim=0)
         prefix = '' if prefix is None else prefix + "_"
         for metric in self.metrics:
-            metric.update(preds=preds, target=target)
+            metric.update(preds=eval_data['preds'], target=eval_data['target'])
             value = metric.value()
             if isinstance(value, float):
                 self.records['result'][f'{prefix}eval_{metric.name()}'] = value
@@ -663,19 +657,6 @@ class TrainerBase:
             else:
                 msg = "metric value type: expected one of (float, dict,None)"
                 raise ValueError(msg)
-
-    def predict_forward(self, batch):
-        self.model.eval()
-        inputs = self.build_batch_inputs(batch)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-        if 'loss' in outputs and outputs['loss'] is not None:
-            outputs['loss'] = outputs['loss'].mean().detach().item()
-        outputs = {key: value.detach().cpu() if isinstance(value, torch.Tensor) else value for key, value in
-                   outputs.items()}
-        batch = {key: value for key, value in dict(batch, **outputs).items() if
-                 key not in self.keys_to_ignore_on_result_save}
-        return batch
 
     def predict(self, test_data, save_result=True, file_name=None, save_dir=None):
         '''
@@ -691,3 +672,19 @@ class TrainerBase:
         if save_result:
             if file_name is None: file_name = f"test_predict_results.pkl"
             self.save_predict_result(data=all_batch_list, file_name=file_name, save_dir=save_dir)
+
+    def predict_forward(self, batch):
+        self.model.eval()
+        inputs = self.build_batch_inputs(batch)
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+        if 'loss' in outputs and outputs['loss'] is not None:
+            outputs['loss'] = outputs['loss'].mean().detach().item()
+        outputs = {key: value.detach().cpu() if isinstance(value, torch.Tensor) else value for key, value in
+                   outputs.items()}
+        batch = {key: value for key, value in dict(batch, **outputs).items() if
+                 key not in self.keys_to_ignore_on_result_save}
+        return batch
+
+    def build_batch_concat(self, all_batch_list):
+        raise NotImplementedError('Method [build_batch_concat] should be implemented.')

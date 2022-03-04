@@ -6,16 +6,8 @@ class TextClassifierTrainer(TrainerBase):
     '''
     文本分类
     '''
+    def build_batch_concat(self, all_batch_list, dim=0):
+        preds = torch.cat([batch['logits'] for batch in all_batch_list], dim=dim)
+        target = torch.cat([batch['labels'] for batch in all_batch_list], dim=dim)
+        return {"preds": preds, "target": target}
 
-    def predict_forward(self, batch):
-        self.model.eval()
-        inputs = self.build_batch_inputs(batch)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-        if 'loss' in outputs and outputs['loss'] is not None:
-            outputs['loss'] = outputs['loss'].mean().detach().item()
-        outputs = {key: value.detach().cpu() if isinstance(value, torch.Tensor) else value for key, value in
-                   outputs.items()}
-        batch = {key: value for key, value in dict(batch, **outputs).items() if
-                 key not in self.keys_to_ignore_on_result_save}
-        return batch

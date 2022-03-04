@@ -7,7 +7,15 @@ class FocalLoss(nn.Module):
     """
     Softmax and sigmoid focal loss
     """
-    def __init__(self, num_labels, activation_type='softmax', gamma=2.0, alpha=0.25, epsilon=1.e-9):
+
+    def __init__(self,
+                 num_labels,
+                 gamma=2.0,
+                 alpha=0.25,
+                 epsilon=1.e-9,
+                 reduction='mean',
+                 activation_type='softmax'
+                 ):
 
         super(FocalLoss, self).__init__()
         self.num_labels = num_labels
@@ -15,6 +23,7 @@ class FocalLoss(nn.Module):
         self.alpha = alpha
         self.epsilon = epsilon
         self.activation_type = activation_type
+        self.reduction = reduction
 
     def forward(self, preds, target):
         """
@@ -37,7 +46,13 @@ class FocalLoss(nn.Module):
             zero_hot_key = 1 - multi_hot_key
             loss = -self.alpha * multi_hot_key * torch.pow((1 - logits), self.gamma) * (logits + self.epsilon).log()
             loss += -(1 - self.alpha) * zero_hot_key * torch.pow(logits, self.gamma) * (1 - logits + self.epsilon).log()
-        return loss.mean()
+        if self.reduction == "mean":
+            loss = loss.mean()
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+        elif self.reduction == 'none':
+            pass
+        return loss
 
 
 class FocalCosineLoss(nn.Module):
@@ -49,7 +64,7 @@ class FocalCosineLoss(nn.Module):
     Source : <https://www.kaggle.com/c/cassava-leaf-disease-classification/discussion/203271>
     """
 
-    def __init__(self, alpha= 1, gamma= 2, xent= 0.1, reduction="mean"):
+    def __init__(self, alpha=1, gamma=2, xent=0.1, reduction="mean"):
         """Constructor for FocalCosineLoss.
         """
         super(FocalCosineLoss, self).__init__()

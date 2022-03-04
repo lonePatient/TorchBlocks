@@ -86,4 +86,6 @@ class BertGlobalPointerForSeqLabel(BertPreTrainedModel):  # config.pe_dim=64
                 label = self.config.id2label[label_id]
                 entity_list.append([start_idx - 1, end_idx - 1, label])
             all_entity_list.append(entity_list)
+        # import pdb
+        # pdb.set_trace()
         return all_entity_list

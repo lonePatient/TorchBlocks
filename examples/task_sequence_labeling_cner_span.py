@@ -1,11 +1,12 @@
 import os
 from typing import *
 import torch
-from transformers import BertConfig,BertTokenizer
+from transformers import BertConfig, BertTokenizer
 from torchblocks.data.dataset import DatasetBase
 from torchblocks.data.process_base import ProcessBase
 from torchblocks.tasks.sequence_labeling_span import BertSpanForSeqLabel
-from torchblocks.metrics.sequence_labeling import SequenceLabelingScore, get_entities
+from torchblocks.metrics.sequence_labeling.seqTag_score import SequenceLabelingScore
+from torchblocks.metrics.sequence_labeling.scheme import get_scheme
 from torchblocks.utils.options import Argparser
 from torchblocks.utils.logger import Logger
 from torchblocks.core import SequenceLabelingTrainer
@@ -17,45 +18,57 @@ from torchblocks.utils.seed import seed_everything
 
 class CnerDataset(DatasetBase):
     keys_to_truncate_on_dynamic_batch = [
-        'input_ids', 'attention_mask', 'token_type_ids',
-        'start_positions', 'end_positions'
+        'input_ids', 'attention_mask', 'token_type_ids', 'start_positions', 'end_positions'
     ]
 
     def __init__(self,
                  data_name,
                  data_dir,
                  data_type,
-                 process_piplines: List[Callable],
+                 process_piplines,
                  **kwargs):
         super().__init__(data_name, data_dir, data_type, process_piplines, **kwargs)
 
     @classmethod
     def get_labels(self) -> List[str]:
-        return ['O', 'CONT', 'NAME', 'PRO', 'ORG', 'RACE', 'TITLE', 'LOC', 'EDU']
+        return ["O", "CONT", "ORG", "LOC", 'EDU', 'NAME', 'PRO', 'RACE', 'TITLE']
 
     def read_data(self, input_file: str) -> Any:
-        current_words = []
-        current_tag_classes = []
-        with open(input_file, encoding='utf-8') as f:
+        lines = []
+        with open(input_file, 'r') as f:
+            words = []
+            labels = []
             for line in f:
-                line = line.strip()
-                if line:
-                    word, tag_class = line.split(' ')
-                    current_words.append(word)
-                    current_tag_classes.append(tag_class)
+                if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                    if words:
+                        lines.append([words, labels])
+                        words = []
+                        labels = []
                 else:
-                    yield (current_words, current_tag_classes)
-                    current_words = []
-                    current_tag_classes = []
-            if current_tag_classes != []:
-                yield (current_words, current_tag_classes)
+                    splits = line.split(" ")
+                    words.append(splits[0])
+                    if len(splits) > 1:
+                        labels.append(splits[-1].replace("\n", ""))
+                    else:
+                        # Examples could have no label for mode = "test"
+                        labels.append("O")
+            if words:
+                lines.append([words, labels])
+        return lines
 
     def create_examples(self, data: Any, data_type: str, **kwargs) -> List[Dict[str, Any]]:
         examples = []
         for (i, line) in enumerate(data):
             guid = f"{data_type}-{i}"
             tokens = line[0]
-            labels = None if data_type == "test" else line[1]
+            labels = []
+            for x in line[1]:
+                if 'M-' in x:
+                    labels.append(x.replace('M-', 'I-'))
+                elif 'E-' in x:
+                    labels.append(x.replace('E-', 'I-'))
+                else:
+                    labels.append(x)
             examples.append(dict(guid=guid, tokens=tokens, labels=labels))
         return examples
 
@@ -104,21 +117,18 @@ class ProcessExample2Feature(ProcessBase):
         overflowing_tokens = inputs.pop("overflowing_tokens")
         num_truncated_tokens = inputs.pop("num_truncated_tokens")
         inputs = {k: v.squeeze(0) for k, v in inputs.items()}
-
         if labels is None:
             inputs['start_positions'] = None
             inputs['end_positions'] = None
             return inputs
-
         start_positions = [self.label2id["O"]] * self.max_sequence_length
         end_positions = [self.label2id["O"]] * self.max_sequence_length
-        entities = get_entities(labels)  # 左闭右闭
-        truncate_len = len(tokens) - overflowing_tokens.size(-1)
+        entities = get_scheme('BIOS')(labels)  # 左闭右闭
         for label, start, end in entities:
-            if start < truncate_len and end < truncate_len:
-                start += 1
-                end += 1  # [CLS]
-                label_id = self.label2id[label]
+            start += 1
+            end += 1  # [CLS]
+            label_id = self.label2id[label]
+            if start < self.max_sequence_length and end < self.max_sequence_length:
                 start_positions[start] = label_id
                 end_positions[end] = label_id
         inputs['start_positions'] = torch.tensor(start_positions)
@@ -145,7 +155,6 @@ def main():
     group.add_argument("--start_thresh", type=float, default=0.0)
     group.add_argument("--end_thresh", type=float, default=0.0)
     opts = parser.parse_args_from_parser(parser)
-
     logger = Logger(opts=opts)
     # device
     logger.info("initializing device")
@@ -176,12 +185,12 @@ def main():
     # trainer
     logger.info("initializing traniner")
     labels = [label for label in CnerDataset.get_labels() if label != 'O']
+    metrics = [SequenceLabelingScore(labels=labels, average='micro', schema='BIOS')]
     trainer = SequenceLabelingTrainer(opts=opts,
                                       model=model,
-                                      metrics=[SequenceLabelingScore(labels, 'micro')],
+                                      metrics=metrics,
                                       logger=logger,
                                       )
-    # do train
     if opts.do_train:
         trainer.train(train_data=train_dataset, dev_data=dev_dataset)
 
@@ -214,7 +223,6 @@ def main():
             model.to(opts.device)
             trainer.model = model
             trainer.predict(test_data=test_dataset, save_result=True, save_dir=prefix)
-
 
 if __name__ == "__main__":
     main()

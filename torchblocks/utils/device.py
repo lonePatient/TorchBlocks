@@ -34,7 +34,7 @@ def prepare_device(device_id):
                    )
             logger.warning(msg)
             device_num = machine_device_num
-    logger.info("Finally,device: %s, n_gpu: %s", device, device_num)
+    logger.info("Finally, device: %s, n_gpu: %s", device, device_num)
     return device, device_num
 
 

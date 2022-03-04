@@ -3,7 +3,8 @@ from typing import *
 import torch
 from torchblocks.data.dataset import DatasetBase
 from torchblocks.data.process_base import ProcessBase
-from torchblocks.metrics.sequence_labeling import SequenceLabelingScore, get_entities
+from torchblocks.metrics.sequence_labeling.seqTag_score import SequenceLabelingScore
+from torchblocks.metrics.sequence_labeling.scheme import get_scheme
 from torchblocks.utils.options import Argparser
 from torchblocks.utils.logger import Logger
 from torchblocks.core import SequenceLabelingTrainer
@@ -30,28 +31,41 @@ class CnerDataset(DatasetBase):
         return ['CONT', 'NAME', 'PRO', 'ORG', 'RACE', 'TITLE', 'LOC', 'EDU']
 
     def read_data(self, input_file: str) -> Any:
-        current_words = []
-        current_tag_classes = []
-        with open(input_file, encoding='utf-8') as f:
+        lines = []
+        with open(input_file, 'r') as f:
+            words = []
+            labels = []
             for line in f:
-                line = line.strip()
-                if line:
-                    word, tag_class = line.split(' ')
-                    current_words.append(word)
-                    current_tag_classes.append(tag_class)
+                if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                    if words:
+                        lines.append([words, labels])
+                        words = []
+                        labels = []
                 else:
-                    yield (current_words, current_tag_classes)
-                    current_words = []
-                    current_tag_classes = []
-            if current_tag_classes != []:
-                yield (current_words, current_tag_classes)
+                    splits = line.split(" ")
+                    words.append(splits[0])
+                    if len(splits) > 1:
+                        labels.append(splits[-1].replace("\n", ""))
+                    else:
+                        # Examples could have no label for mode = "test"
+                        labels.append("O")
+            if words:
+                lines.append([words, labels])
+        return lines
 
     def create_examples(self, data: Any, data_type: str, **kwargs) -> List[Dict[str, Any]]:
         examples = []
         for (i, line) in enumerate(data):
             guid = f"{data_type}-{i}"
             tokens = line[0]
-            labels = None if data_type == "test" else line[1]
+            labels = []
+            for x in line[1]:
+                if 'M-' in x:
+                    labels.append(x.replace('M-', 'I-'))
+                elif 'E-' in x:
+                    labels.append(x.replace('E-', 'I-'))
+                else:
+                    labels.append(x)
             examples.append(dict(guid=guid, tokens=tokens, labels=labels))
         return examples
 
@@ -105,15 +119,15 @@ class ProcessExample2Feature(ProcessBase):
             inputs['labels'] = None
             return inputs
         global_labels = torch.zeros((num_labels, self.max_sequence_length, self.max_sequence_length), dtype=torch.long)
-        entities = get_entities(labels)  # 左闭右闭
+        entities = get_scheme('BIOS')(labels)  # 左闭右闭
         for label, start, end in entities:
             start += 1  # [CLS]
             end += 1
             label_id = self.label2id[label]
-            global_labels[label_id, start, end] = 1
+            if start <self.max_sequence_length and end < self.max_sequence_length:
+                global_labels[label_id, start, end] = 1
         inputs['labels'] = global_labels
         return inputs
-
 
 def load_data(data_name, data_dir, data_type, tokenizer, max_sequence_length, **kwargs):
     process_piplines = [
@@ -166,7 +180,7 @@ def main():
     model.to(opts.device)
     # trainer
     logger.info("initializing traniner")
-    metrics = [SequenceLabelingScore(CnerDataset.get_labels(), 'micro')]
+    metrics = [SequenceLabelingScore(CnerDataset.get_labels(),schema='BIOS',average= 'micro')]
     trainer = SequenceLabelingTrainer(opts=opts,
                                       model=model,
                                       metrics=metrics,

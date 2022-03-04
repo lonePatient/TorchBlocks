@@ -5,8 +5,9 @@ A PyTorch-based toolkit for natural language processing
 
 ### Requirements
 
-- transformers>=4.1.1
 - torch>=1.6.0
+- transformers>=4.1.1
+- torchmetrics>=0.6.0
 
 TorchBlocks requires Python 3.6+. We recommend installing TorchBlocks in a Linux or OSX environment.
 

@@ -207,6 +207,6 @@ TYPE_TO_SCHEDULER = {
 }
 
 
-def get_lr_sceduler(scheduler_type):
+def get_lr_scheduler(scheduler_type):
     scheduler_function = TYPE_TO_SCHEDULER[scheduler_type]
     return scheduler_function

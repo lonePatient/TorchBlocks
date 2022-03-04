@@ -50,6 +50,3 @@
 
 1. task_text_classification_cola.py
 > 文本分类任务，主要形式为[CLS]sentence[SEP]
-
-0. task_sequence_labeling_ner_lstm_crf.py
-> 命名实体识别任务，使用LSTM-CRF结构

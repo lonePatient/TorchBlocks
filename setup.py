@@ -27,7 +27,7 @@ setup(
     description="A PyTorch-based toolkit for natural language processing",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    keywords=["NLP", "deep learning", "transformer", "Pytorch"],
+    keywords=["NLP", "Deep Learning", "Transformers", "PyTorch"],
     license="MIT",
     url="https://github.com/lonePatient/TorchBlocks",
     packages=find_packages("torchblocks"),

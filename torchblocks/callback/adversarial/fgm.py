@@ -1,9 +1,5 @@
 import torch
 
-'''
-对抗训练模块
-'''
-
 
 class FGM(object):
     def __init__(self, model, emb_name, epsilon=1.0):
