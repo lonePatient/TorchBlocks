@@ -178,9 +178,9 @@ def precision_recall_fscore_support(y_true: Union[List[List[str]], List[List[Tup
     def extract_tp_actual_correct(y_true, y_pred, suffix, *args):
         entities_true = defaultdict(set)
         entities_pred = defaultdict(set)
-        get_entities = get_scheme(scheme_type=schema)
         if len(y_pred[0]) > 0 and isinstance(y_pred[0][0], str):
             check_consistent_length(y_true, y_pred)
+            get_entities = get_scheme(scheme_type=schema)
             for i, (y_t, y_p) in enumerate(zip(y_true, y_pred)):
                 for type_name, start, end in get_entities(y_t):
                     entities_true[type_name].add((i, start, end))

@@ -5,7 +5,7 @@ from torchblocks.metrics.sequence_labeling.precision_recall_fscore import precis
 
 class SequenceLabelingScore(Metric):
 
-    def __init__(self, labels, schema, average="micro"):
+    def __init__(self, labels, schema=None, average="micro"):
         self.labels = labels
         self.schema = schema
         self.average = average
