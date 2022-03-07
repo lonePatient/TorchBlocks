@@ -214,7 +214,9 @@ class Argparser(argparse.ArgumentParser):
             save_arguments_file_path = os.path.join(args.output_dir, save_arguments_file_name)
             if os.path.exists(save_arguments_file_path):
                 logger.info(f"File {save_arguments_file_path} exist,Overwrite arguments file")
-            save_json(vars(args), save_arguments_file_path)
+            # save_json(vars(args), save_arguments_file_path)
+            with open(str(save_arguments_file_path), 'w') as f:
+                json.dump(vars(args), f, ensure_ascii=False, indent=4)
 
     def print_args(self, args):
         print('**********************************')
