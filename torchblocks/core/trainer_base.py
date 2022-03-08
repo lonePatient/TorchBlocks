@@ -565,6 +565,7 @@ class TrainerBase:
         '''
         # self.logger.info("Training/evaluation parameters %s", self.opts)
         self.logger.info("***** Running training %s *****", self.opts.task_name)
+        self.logger.info("  Options = %s", self.opts)
         self.logger.info("  Model type = %s", self.opts.model_type)
         self.logger.info("  Num examples = %d", examples)
         self.logger.info("  Num Epochs = %d", self.num_train_epochs)
