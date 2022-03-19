@@ -1,4 +1,3 @@
-import numpy as np
 import os.path as osp
 from setuptools import find_packages, setup
 
