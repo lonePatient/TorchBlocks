@@ -1,11 +1,8 @@
 import os
 import json
-import logging
 import argparse
 from pathlib import Path
 from torchblocks.utils.paths import save_json, check_file
-
-logger = logging.getLogger(__name__)
 
 
 class Argparser(argparse.ArgumentParser):
@@ -213,8 +210,7 @@ class Argparser(argparse.ArgumentParser):
             save_arguments_file_name = f"{args.task_name}_{args.model_type}_{args.experiment_code}_opts.json"
             save_arguments_file_path = os.path.join(args.output_dir, save_arguments_file_name)
             if os.path.exists(save_arguments_file_path):
-                logger.info(f"File {save_arguments_file_path} exist,Overwrite arguments file")
-            # save_json(vars(args), save_arguments_file_path)
+                print(f"[Warning]File {save_arguments_file_path} exist,Overwrite arguments file")
             with open(str(save_arguments_file_path), 'w') as f:
                 json.dump(vars(args), f, ensure_ascii=False, indent=4)
 
@@ -222,10 +218,11 @@ class Argparser(argparse.ArgumentParser):
         print('**********************************')
         print('************ Arguments ***********')
         print('**********************************')
-        argskeys = list(args.__dict__.keys())
-        argskeys.sort()
-        for key in argskeys:
-            print('  {}: {}'.format(key, args.__dict__[key]))
+        args_list = sorted(args.__dict__.items(),key=lambda x:x[0])
+        msg = ''
+        for k,v in args_list:
+            msg += f'  {k}: {v}\n'
+        print(msg)
 
     def make_experiment_dir(self, args):
         args.output_dir = os.path.join(args.output_dir, f'{args.task_name}_{args.model_type}_{args.experiment_code}')
