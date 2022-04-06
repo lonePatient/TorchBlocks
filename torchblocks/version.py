@@ -1,5 +1,4 @@
-from . import __version__
-
+__version__ = '0.7.0'
 def parse_version_info(version_str):
     version_info = []
     for x in version_str.split('.'):
