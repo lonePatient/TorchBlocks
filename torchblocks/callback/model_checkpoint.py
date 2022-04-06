@@ -54,25 +54,29 @@ class ModelCheckpoint(object):
         else:
             self.save_ckpt_dir = os.path.join(self.ckpt_dir, prefix + '-{:.4f}-step-{}')
 
-    def step(self, state, current):
-        if not isinstance(current, torch.Tensor): current = torch.tensor(current)
+    def step(self, state, current=None):
+        if current is not None and not isinstance(current, torch.Tensor): 
+            current = torch.tensor(current)
         state['monitor'] = self.monitor
         state['score'] = current
         state['save_dir'] = self.save_ckpt_dir
         global_step = state['global_step']
         is_saving = False
-        if not self.save_best:
+        if current is None: # evaluate_during_training = False
             is_saving = True
-            state['save_dir'] = self.save_ckpt_dir.format(state['score'], global_step)
-        if self.monitor_op(current, self.best_score):  # best
-            msg = (
-                f" Steps {global_step}: Metric {self.monitor} improved from {self.best_score:.4f} to {state['score']:.4f}"
-                f". New best score: {state['score']:.4f}"
-            )
-            logger.info(msg)
-            self.best_score = current
-            state['best_score'] = self.best_score
-            is_saving = True
+        else:
+            if not self.save_best:
+                is_saving = True
+                state['save_dir'] = self.save_ckpt_dir.format(state['score'], global_step)
+            if self.monitor_op(current, self.best_score):  # best
+                msg = (
+                    f" Steps {global_step}: Metric {self.monitor} improved from {self.best_score:.4f} to {state['score']:.4f}"
+                    f". New best score: {state['score']:.4f}"
+                )
+                logger.info(msg)
+                self.best_score = current
+                state['best_score'] = self.best_score
+                is_saving = True
         if is_saving:
             for key in self.keys_to_ignore_on_save:
                 if key in state:

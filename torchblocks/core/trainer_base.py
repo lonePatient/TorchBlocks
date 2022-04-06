@@ -478,8 +478,8 @@ class TrainerBase:
                     if self.opts.ema_enable:
                         self.model_ema.update(self.model)
                     pbar.step(step, {'loss': outputs['loss'].item()})
-                if (
-                        self.opts.logging_steps > 0 and self.global_step > 0) and should_logging:
+                if (self.opts.logging_steps > 0 and self.global_step > 0) and \
+                        should_logging and self.opts.evaluate_during_training:
                     self.evaluate(dev_data)
                     if self.opts.ema_enable and self.model_ema is not None:
                         self.evaluate(dev_data, prefix_metric='ema')
@@ -489,16 +489,23 @@ class TrainerBase:
                     # model checkpoint
                     if self.model_checkpoint:
                         state = self.build_state_object(**state_to_save)
-                        if self.model_checkpoint.monitor not in self.records['result']:
-                            msg = ("There were expected keys in the eval result: "
-                                   f"{', '.join(list(self.records['result'].keys()))}, "
-                                   f"but get {self.model_checkpoint.monitor}."
-                                   )
-                            raise TypeError(msg)
-                        self.model_checkpoint.step(
-                            state=state,
-                            current=self.records['result'][self.model_checkpoint.monitor]
-                        )
+                        if self.opts.evaluate_during_training:
+                            if self.model_checkpoint.monitor not in self.records['result']:
+                                msg = ("There were expected keys in the eval result: "
+                                    f"{', '.join(list(self.records['result'].keys()))}, "
+                                    f"but get {self.model_checkpoint.monitor}."
+                                    )
+                                raise TypeError(msg)
+                            self.model_checkpoint.step(
+                                state=state,
+                                current=self.records['result'][self.model_checkpoint.monitor]
+                            )
+                        else:
+                            self.model_checkpoint.step(
+                                state=state,
+                                current=None
+                            )
+
             # early_stopping
             if self.early_stopping:
                 if self.early_stopping.monitor not in self.records['result']:
