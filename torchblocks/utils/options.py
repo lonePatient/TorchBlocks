@@ -141,7 +141,8 @@ class Argparser(argparse.ArgumentParser):
     def arguments_adv(self):
         group = self.add_argument_group(title='Adversarial training', description='Adversarial training arguments')
         group.add_argument('--adv_enable', action='store_true', help='Adversarial training')
-        group.add_argument('--adv_type', default='fgm', type=str, choices=['fgm', 'pgd'])
+        group.add_argument('--adv_start_steps', default=0, type=int, help='the step to start attack')
+        group.add_argument('--adv_type', default='fgm', type=str, choices=['fgm', 'pgd', 'awp'])
         group.add_argument('--adv_epsilon', type=float, default=1.0, help='adv epsilon')
         group.add_argument('--adv_name', type=str, default='word_embeddings',
                            help='name for adversarial layer')

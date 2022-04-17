@@ -13,7 +13,7 @@ from torch.utils.data.sampler import RandomSampler, SequentialSampler
 
 from torchblocks.optims.adamw import AdamW
 from torchblocks.utils.logger import Logger
-from torchblocks.callback.adversarial import FGM, PGD
+from torchblocks.callback.adversarial import FGM, PGD, AWP
 from torchblocks.core.utils import is_apex_available
 from torchblocks.optims.lr_scheduler import get_lr_scheduler
 from torchblocks.utils.common import check_object_type
@@ -156,17 +156,22 @@ class TrainerBase:
                 self.use_apex = True
 
     def build_adv_model(self):
+        adv_model = None
         if self.opts.adv_type == 'fgm':
             adv_model = FGM(self.model,
                             emb_name=self.opts.adv_name,
                             epsilon=self.opts.adv_epsilon)
-            return adv_model
-        if self.opts.adv_type == 'pgd':
+        elif self.opts.adv_type == 'pgd':
             adv_model = PGD(self.model,
                             emb_name=self.opts.adv_name,
                             epsilon=self.opts.adv_epsilon,
                             alpha=self.opts.adv_alpha)
-            return adv_model
+        elif self.opts.adv_type == "awp":
+            adv_model = AWP(self.model,
+                            emb_name=self.opts.adv_name,
+                            epsilon=self.opts.adv_epsilon,
+                            alpha=self.opts.adv_alpha)
+        return adv_model
 
     def build_record_tracker(self, **kwargs):
         '''
@@ -416,10 +421,12 @@ class TrainerBase:
     def train_adv(self, batch):
         self.adv_model.backup_grad()
         for t in range(self.opts.adv_number):
-            if self.opts.adv_type == 'pgd':
-                self.adv_model.attack(is_first_attack=(t == 0))
-            else:
+            if self.opts.adv_type == 'fgm':
                 self.adv_model.attack()
+            elif self.opts.adv_type == 'pgd':
+                self.adv_model.attack(is_first_attack=(t == 0))
+            elif self.opts.adv_type == 'awp':
+                self.adv_model.attack(is_first_attack=(t == 0))
             adv_outputs = self.train_forward(batch)
             adv_loss = adv_outputs['loss']
             self.train_backward(adv_loss)
@@ -432,7 +439,7 @@ class TrainerBase:
         self.train_backward(loss)
         should_save = False
         should_logging = False
-        if self.opts.adv_enable:
+        if self.opts.adv_enable and step >= self.opts.adv_start_steps:
             self.train_adv(batch)
         if (step + 1) % self.gradient_accumulation_steps == 0 or (
                 self.steps_in_epoch <= self.gradient_accumulation_steps

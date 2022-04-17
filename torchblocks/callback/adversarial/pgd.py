@@ -46,3 +46,4 @@ class PGD(object):
                     param.grad = self.grad_backup[name]
                 else:
                     param.grad += self.grad_backup[name]
+        self.grad_backup = {}
