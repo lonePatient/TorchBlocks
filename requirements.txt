@@ -1,7 +1,10 @@
 tokenizers >= 0.7.0
-transformers >= 4.1.1
+transformers>=4.10.0
 sacremoses
 sentencepiece
 scipy
 scikit-learn
-torchmetrics>=0.6.0
+matplotlib
+zhconv
+torchmetrics>=0.11.3
+torch>=1.10.0,<1.13.0
