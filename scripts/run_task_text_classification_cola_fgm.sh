@@ -6,18 +6,18 @@ export TASK_NAME=cola
 export MODEL_TYPE=bert
 
 #-----------training-----------------
-python task_text_classification_cola.py \
+python examples/task_text_classification_cola.py \
   --model_type=$MODEL_TYPE \
   --pretrained_model_path=$MODEL_DIR \
   --task_name=$TASK_NAME \
   --do_train \
   --device_id='0' \
   --do_lower_case \
-  --experiment_code='V1' \
-  --adv_enable \
-  --adv_type='fgm' \
-  --adv_epsilon=1.0 \
+  --experiment_name='fgm_ver_001' \
+  --do_fgm \
+  --fgm_epsilon=1.0 \
   --scheduler_type=linear \
+  --checkpoint_mode=max \
   --checkpoint_monitor=eval_mcc \
   --data_dir=$DATA_DIR/$TASK_NAME/ \
   --train_input_file=train.tsv \
@@ -30,7 +30,7 @@ python task_text_classification_cola.py \
   --learning_rate=3e-5 \
   --num_train_epochs=4 \
   --gradient_accumulation_steps=1 \
-  --warmup_proportion=0.1 \
+  --warmup_rate=0.1 \
   --logging_steps=-1 \
   --save_steps=-1 \
   --seed=42
